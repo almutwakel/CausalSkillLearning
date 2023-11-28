@@ -333,16 +333,17 @@ class GRAB_PreDataset(Dataset):
 			# Now actually load file. 
 			datapoint = np.load(v, allow_pickle=True)['body_joints']	
 
-			# Get object filepath
-			object_path = v.replace("GRAB_Joints", "grab").replace("_body_joints.npz", ".npz")
+			if 'Object' in self.args.dataset:
+				# Get object filepath
+				object_path = v.replace("GRAB_Joints", "grab").replace("_body_joints.npz", ".npz")
 
-			# Load object data
-			object_dict_raw = np.load(object_path, allow_pickle=True)
-			object_dict = object_dict_raw['object'].flatten()[0]
-			object_transl = object_dict['params']['transl']
-			object_orient = object_dict['params']['global_orient']
+				# Load object data
+				object_dict_raw = np.load(object_path, allow_pickle=True)
+				object_dict = object_dict_raw['object'].flatten()[0]
+				object_transl = object_dict['params']['transl']
+				object_orient = object_dict['params']['global_orient']
 
-			object_datapoint = np.concatenate((object_transl, object_orient), axis=1)
+				object_datapoint = np.concatenate((object_transl, object_orient), axis=1)
 
 		# Without normalizing object:
 			# Subsample relevant joints. 
@@ -355,14 +356,15 @@ class GRAB_PreDataset(Dataset):
 			reshaped_normalized_datapoint = normalized_relevant_joint_datapoint.reshape(normalized_relevant_joint_datapoint.shape[0],-1)
 
 			# Combine object + body joints
-			reshaped_datapoint_with_objects = np.concatenate((reshaped_normalized_datapoint, object_datapoint), axis=1)
+			if 'Object' in self.args.dataset:
+				reshaped_normalized_datapoint = np.concatenate((reshaped_normalized_datapoint, object_datapoint), axis=1)
 
-			self.state_size = reshaped_datapoint_with_objects.shape[1]
+			self.state_size = reshaped_normalized_datapoint.shape[1]
 
 			# Subsample in time. 
 			number_of_timesteps = datapoint.shape[0]//self.ds_freq
 			# subsampled_data = resample(relevant_joints_datapoint, number_of_timesteps)
-			subsampled_data = resample(reshaped_datapoint_with_objects, number_of_timesteps)
+			subsampled_data = resample(reshaped_normalized_datapoint, number_of_timesteps)
 			
 			# Add subsampled datapoint to file. 
 			self.files.append(subsampled_data)            
