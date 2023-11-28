@@ -333,7 +333,7 @@ class GRAB_PreDataset(Dataset):
 			# Now actually load file. 
 			datapoint = np.load(v, allow_pickle=True)['body_joints']	
 
-			if 'Object' in self.args.dataset:
+			if 'Object' in self.args.data:
 				# Get object filepath
 				object_path = v.replace("GRAB_Joints", "grab").replace("_body_joints.npz", ".npz")
 
@@ -356,7 +356,7 @@ class GRAB_PreDataset(Dataset):
 			reshaped_normalized_datapoint = normalized_relevant_joint_datapoint.reshape(normalized_relevant_joint_datapoint.shape[0],-1)
 
 			# Combine object + body joints
-			if 'Object' in self.args.dataset:
+			if 'Object' in self.args.data:
 				reshaped_normalized_datapoint = np.concatenate((reshaped_normalized_datapoint, object_datapoint), axis=1)
 
 			self.state_size = reshaped_normalized_datapoint.shape[1]
