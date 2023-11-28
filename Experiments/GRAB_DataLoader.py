@@ -531,6 +531,7 @@ class GRAB_Dataset(Dataset):
 		data_element['is_valid'] = True
 		data_element['demo'] = self.data_list[index]
 		data_element['file'] = self.filelist[index]
+		data_element['task-id'] = index	
 
 		return data_element
 
