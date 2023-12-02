@@ -21,7 +21,8 @@ def pelvis_norm(relevant_joints_datapoint):
 
 def shoulder_norm(relevant_joints_datapoint):
 	relevant_joints_datapoint[:, 2:25] -= relevant_joints_datapoint[:, 1].reshape(relevant_joints_datapoint.shape[0], 1, 3)
-	relevant_joints_datapoint[:, 27:] -= relevant_joints_datapoint[:, 26].reshape(relevant_joints_datapoint.shape[0], 1, 3)
+	if len(relevant_joints_datapoint[0]) > 26:
+		relevant_joints_datapoint[:, 27:] -= relevant_joints_datapoint[:, 26].reshape(relevant_joints_datapoint.shape[0], 1, 3)
 	return relevant_joints_datapoint
 
 def wrist_norm(relevant_joints_datapoint):
@@ -360,7 +361,7 @@ class GRAB_PreDataset(Dataset):
 				reshaped_normalized_datapoint = np.concatenate((reshaped_normalized_datapoint, object_datapoint), axis=1)
 
 			self.state_size = reshaped_normalized_datapoint.shape[1]
-
+			breakpoint()
 			# Subsample in time. 
 			number_of_timesteps = datapoint.shape[0]//self.ds_freq
 			# subsampled_data = resample(relevant_joints_datapoint, number_of_timesteps)
@@ -738,7 +739,7 @@ class GRABArmHand_PreDataset(GRAB_PreDataset):
 												'right_ring',
 												'right_pinky'])
 
-		self.left_arm_and_hand_joint_names = np.array([ #'pelvis',
+		self.left_arm_and_hand_joint_names = np.array([ 'pelvis',
 												'left_shoulder',
 												'left_elbow',
 												'left_collar',
@@ -764,7 +765,7 @@ class GRABArmHand_PreDataset(GRAB_PreDataset):
 												'left_ring',
 												'left_pinky'])
 
-		self.right_arm_and_hand_joint_names = np.array([ #'pelvis',
+		self.right_arm_and_hand_joint_names = np.array([ 'pelvis',
 												'right_shoulder',
 												'right_elbow',
 												'right_collar',
