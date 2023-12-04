@@ -17,7 +17,8 @@ def resample(original_trajectory, desired_number_timepoints):
 	return original_trajectory[new_timepoints]
 
 def pelvis_norm(relevant_joints_datapoint):
-	return relevant_joints_datapoint[:, 1:] - relevant_joints_datapoint[:, 0].reshape(relevant_joints_datapoint.shape[0], 1, 3)
+	relevant_joints_datapoint[:, 1:] -= relevant_joints_datapoint[:, 0].reshape(relevant_joints_datapoint.shape[0], 1, 3)
+	return relevant_joints_datapoint
 
 def shoulder_norm(relevant_joints_datapoint):
 	relevant_joints_datapoint[:, 2:25] -= relevant_joints_datapoint[:, 1].reshape(relevant_joints_datapoint.shape[0], 1, 3)
@@ -37,9 +38,6 @@ def wrist_norm(relevant_joints_datapoint):
 
 		wristless_joints = np.delete(relevant_joints_datapoint, [0, 22], axis=1)
 		return wristless_joints
-	return relevant_joints_datapoint[:, 1:]
-
-		
 	return relevant_joints_datapoint
 
 def alternate_wrist_norm(relevant_joints_datapoint):
@@ -293,13 +291,16 @@ class GRAB_PreDataset(Dataset):
 		for k, v in enumerate(self.arm_and_hand_joint_indices):
 			self.arm_and_hand_joint_indices[k] = np.where(self.joint_names==v)[0][0]
 
-		for i in range(self.object_indices.shape[0]):
-			self.object_indices[i] = len(self.arm_and_hand_joint_indices) + i
+		# for i in range(self.object_indices.shape[0]):
+			# self.object_indices[i] = len(self.arm_and_hand_joint_indices) + i
 
+		# self.arm_hand_object_indices = self.arm_and_hand_joint_indices
 
+		# Append zeros for object indices and fill when they're loaded
 		self.arm_hand_object_indices = np.zeros(len(self.arm_and_hand_joint_names) + 6)
 		self.arm_hand_object_indices[0:len(self.arm_and_hand_joint_names)] = self.arm_and_hand_joint_indices
-		self.arm_hand_object_indices[-6:] = self.object_indices
+
+		# self.arm_hand_object_indices[-6:] = self.object_indices
 		
 		
 	def subsample_relevant_joints(self, datapoint):
@@ -358,10 +359,10 @@ class GRAB_PreDataset(Dataset):
 
 			# Combine object + body joints
 			if 'Object' in self.args.data:
-				reshaped_normalized_datapoint = np.concatenate((reshaped_normalized_datapoint, object_datapoint), axis=1)
+				# reshaped_normalized_datapoint = np.concatenate((reshaped_normalized_datapoint, object_datapoint), axis=1)
+				reshaped_normalized_datapoint[:, -6:] = object_datapoint
 
 			self.state_size = reshaped_normalized_datapoint.shape[1]
-			embed()
 			# Subsample in time. 
 			number_of_timesteps = datapoint.shape[0]//self.ds_freq
 			# subsampled_data = resample(relevant_joints_datapoint, number_of_timesteps)
@@ -378,7 +379,12 @@ class GRAB_PreDataset(Dataset):
 		np.save(os.path.join(self.dataset_directory, self.getname() + "_DataFile_BaseNormalize.npy"), self.file_array)
 		np.save(os.path.join(self.dataset_directory, self.getname() + "_OrderedFileList.npy"), self.filelist)
 
+	def get_state_size(self):
+		return self.state_size
+
 	def normalize(self, relevant_joints_datapoint):
+		if len(relevant_joints_datapoint) == 0:
+			return relevant_joints_datapoint
 		if self.args.position_normalization == 'pelvis':
 			return pelvis_norm(relevant_joints_datapoint)
 		elif self.args.position_normalization == 'shoulder':
@@ -512,7 +518,12 @@ class GRAB_Dataset(Dataset):
 			self.dataset_length = len(self.data_list)
 			self.dataset_trajectory_lengths = np.array(self.dataset_trajectory_lengths)
 				
-		self.data_list_array = np.array(self.data_list)		
+		self.data_list_array = np.array(self.data_list)
+
+	def get_state_size(self):
+		if self.data_list is None or len(self.data_list)==0:
+			raise ValueError("Data list is empty. Cannot get state size.")
+		return self.data_list_array.shape[2]		
 
 	def getname(self):
 		return "GRAB"
@@ -1288,7 +1299,7 @@ class GRABArmHandObject_PreDataset(GRAB_PreDataset):
 												'right_ring',
 												'right_pinky'])
 
-		self.left_arm_and_hand_joint_names = np.array([ #'pelvis',
+		self.left_arm_and_hand_joint_names = np.array([ 'pelvis',
 												'left_shoulder',
 												'left_elbow',
 												'left_collar',
@@ -1314,7 +1325,7 @@ class GRABArmHandObject_PreDataset(GRAB_PreDataset):
 												'left_ring',
 												'left_pinky'])
 
-		self.right_arm_and_hand_joint_names = np.array([ #'pelvis',
+		self.right_arm_and_hand_joint_names = np.array([ 'pelvis',
 												'right_shoulder',
 												'right_elbow',
 												'right_collar',
