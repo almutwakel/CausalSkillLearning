@@ -761,7 +761,7 @@ class GRABArmHandVisualizer(GRABVisualizer):
 		# THis class implements skeleton based visualization of the joints predicted by our model, rather than trying to visualize meshes. 
 
 		# Remember, the relevant joints - 
-		self.arm_and_hand_joint_names = np.array([ #'pelvis', # not counted
+		self.arm_and_hand_joint_names = np.array([ 'pelvis', # not counted # counted now?
 												'left_shoulder', # index 0
 												'left_elbow',
 												'left_collar',
@@ -837,6 +837,9 @@ class GRABArmHandVisualizer(GRABVisualizer):
 		for i in range(23):
 			self.hand_link_indices[i][0] += 3
 			self.hand_link_indices[i][1] += 3
+			# add pelvis
+			self.hand_link_indices[i][0] += 1
+			self.hand_link_indices[i][1] += 1
 		
 		for i in range(23):
 			self.hand_link_indices[23+i][0] += 6
@@ -851,6 +854,11 @@ class GRABArmHandVisualizer(GRABVisualizer):
 		self.arm_link_indices = np.array([[2,0],[0,1],[1,3], # left collar -> shoulder -> elbow -> wrist
 										[26,24],[24,25],[25,27]]) # right collar -> shoulder -> elbow -> wrist
 		self.arm_link_colors = ['k','k','k','b','r','b','r','b','r']
+
+		# adjust indices for pelvis
+		for i in range(self.arm_link_indices.shape[0]):
+			self.arm_link_indices[i][0] += 1
+			self.arm_link_indices[i][1] += 1
 		
 		# Now set pelvis pose.
 		self.default_pelvis_pose = np.zeros((3))
@@ -879,12 +887,12 @@ class GRABArmHandVisualizer(GRABVisualizer):
 		# Add pelvis joint. 
 		# Assumes joint_angles are dimensions N joints x 3 dimensions. 
 		joints = copy.deepcopy(joint_angles)
-		joints = joints.reshape((48,3))
-		# joints = np.insert(joints, 0, self.default_pelvis_pose, axis=0)
-		# Unnormalization w.r.t pelvis doesn't need to happen, because default pelvis pose 0. 
-		leftjoints = joints[:24]
-		rightjoints = joints[24:]
-		# joints[0] = self.default_pelvis_pose
+		joints = joints.reshape((-1,3))
+		leftjoints = joints[1:25]
+		rightjoints = joints[25:49]
+
+		# Unnormalize with respect to pelvis.
+		joints[1:] += joints[0]
 
 		# Now plot all joints, with left hand blue and right hand red to differentiate, and pelvis in black. 
 
@@ -923,6 +931,67 @@ class GRABArmHandVisualizer(GRABVisualizer):
 		plt.close(fig)
 
 		return image
+
+class GRABArmHandObjectVisualizer(GRABArmHandVisualizer):
+	def __init__(self, args, has_display=False):
+		super(GRABArmHandObjectVisualizer, self).__init__(args, has_display)
+		self.object_link_indices = np.array([[-1, -2]])
+
+	def set_joint_pose_return_image(self, joint_angles, additional_info=None):
+
+		# This code just plots skeleton. 			
+
+		# First create figure object. 
+		# One plot for each hand
+		fig = plt.figure()
+		ax_left = fig.add_subplot(121, projection='3d')
+		ax_right = fig.add_subplot(122, projection='3d')	
+		# Add pelvis joint. 
+		# Assumes joint_angles are dimensions N joints x 3 dimensions. 
+		joints = copy.deepcopy(joint_angles)
+		joints = joints.reshape((-1,3))
+		leftjoints = np.concatenate(joints[:24], joints[-2:], axis=0)
+		rightjoints = np.concatenate(joints[24:48], joints[-2:], axis=0)
+		# Now plot all joints, with left hand blue and right hand red to differentiate, and pelvis in black. 
+
+		# print("Embedding in set joint pose")
+		# embed()
+		ax_left.scatter(leftjoints[:, 0], leftjoints[:, 1], leftjoints[:, 2], color=self.colors, s=20, depthshade=False)
+		ax_right.scatter(rightjoints[:, 0], rightjoints[:, 1], rightjoints[:, 2], color=self.colors, s=20, depthshade=False)
+
+		# Now plot links. 
+		for k, v in enumerate(self.hand_link_indices[:23]):
+			ax_left.plot([joints[v[0],0],joints[v[1],0]],[joints[v[0],1],joints[v[1],1]],[joints[v[0],2],joints[v[1],2]]) #,c=self.hand_link_indices[k])
+
+		for k, v in enumerate(self.hand_link_indices[23:]):
+			ax_right.plot([joints[v[0],0],joints[v[1],0]],[joints[v[0],1],joints[v[1],1]],[joints[v[0],2],joints[v[1],2]]) #,c=self.hand_link_colors[k])
+
+		for k, v in enumerate(self.arm_link_indices[:3]):
+			ax_left.plot([joints[v[0],0],joints[v[1],0]],[joints[v[0],1],joints[v[1],1]],[joints[v[0],2],joints[v[1],2]]) #,c=self.arm_link_colors[k])
+
+		for k, v in enumerate(self.arm_link_indices[3:]):
+			ax_right.plot([joints[v[0],0],joints[v[1],0]],[joints[v[0],1],joints[v[1],1]],[joints[v[0],2],joints[v[1],2]]) #,c=self.arm_link_colors[k])
+
+		for k, v in enumerate(self.object_link_indices):
+			ax_left.plot([joints[v[0],0],joints[v[1],0]],[joints[v[0],1],joints[v[1],1]],[joints[v[0],2],joints[v[1],2]], c='g')
+			ax_right.plot([joints[v[0],0],joints[v[1],0]],[joints[v[0],1],joints[v[1],1]],[joints[v[0],2],joints[v[1],2]], c='g')
+
+
+		if additional_info is not None:
+			ax_left.set_title(additional_info)
+			ax_right.set_title(additional_info)
+
+		# Now get image from figure object to return .
+		image = mplfig_to_npimage(fig)
+
+		# Clear figure from memory.
+		ax_left.clear()
+		ax_right.clear()
+		fig.clear()
+		plt.close(fig)
+
+		return image
+	
 
 class DAPGVisualizer(SawyerVisualizer):
 		
