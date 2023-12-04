@@ -761,7 +761,7 @@ class GRABArmHandVisualizer(GRABVisualizer):
 		# THis class implements skeleton based visualization of the joints predicted by our model, rather than trying to visualize meshes. 
 
 		# Remember, the relevant joints - 
-		self.arm_and_hand_joint_names = np.array([ 'pelvis', # not counted # counted now?
+		self.arm_and_hand_joint_names = np.array([ # 'pelvis', # not counted
 												'left_shoulder', # index 0
 												'left_elbow',
 												'left_collar',
@@ -837,9 +837,6 @@ class GRABArmHandVisualizer(GRABVisualizer):
 		for i in range(23):
 			self.hand_link_indices[i][0] += 3
 			self.hand_link_indices[i][1] += 3
-			# add pelvis
-			self.hand_link_indices[i][0] += 1
-			self.hand_link_indices[i][1] += 1
 		
 		for i in range(23):
 			self.hand_link_indices[23+i][0] += 6
@@ -854,11 +851,6 @@ class GRABArmHandVisualizer(GRABVisualizer):
 		self.arm_link_indices = np.array([[2,0],[0,1],[1,3], # left collar -> shoulder -> elbow -> wrist
 										[26,24],[24,25],[25,27]]) # right collar -> shoulder -> elbow -> wrist
 		self.arm_link_colors = ['k','k','k','b','r','b','r','b','r']
-
-		# adjust indices for pelvis
-		for i in range(self.arm_link_indices.shape[0]):
-			self.arm_link_indices[i][0] += 1
-			self.arm_link_indices[i][1] += 1
 		
 		# Now set pelvis pose.
 		self.default_pelvis_pose = np.zeros((3))
@@ -888,11 +880,8 @@ class GRABArmHandVisualizer(GRABVisualizer):
 		# Assumes joint_angles are dimensions N joints x 3 dimensions. 
 		joints = copy.deepcopy(joint_angles)
 		joints = joints.reshape((-1,3))
-		leftjoints = joints[1:25]
-		rightjoints = joints[25:49]
-
-		# Unnormalize with respect to pelvis.
-		joints[1:] += joints[0]
+		leftjoints = joints[0:24]
+		rightjoints = joints[24:48]
 
 		# Now plot all joints, with left hand blue and right hand red to differentiate, and pelvis in black. 
 
@@ -950,7 +939,7 @@ class GRABArmHandObjectVisualizer(GRABArmHandVisualizer):
 		# Assumes joint_angles are dimensions N joints x 3 dimensions. 
 		joints = copy.deepcopy(joint_angles)
 		joints = joints.reshape((-1,3))
-		leftjoints = np.concatenate(joints[:24], joints[-2:], axis=0)
+		leftjoints = np.concatenate(joints[0:24], joints[-2:], axis=0)
 		rightjoints = np.concatenate(joints[24:48], joints[-2:], axis=0)
 		# Now plot all joints, with left hand blue and right hand red to differentiate, and pelvis in black. 
 

@@ -363,6 +363,7 @@ class GRAB_PreDataset(Dataset):
 				reshaped_normalized_datapoint[:, -6:] = object_datapoint
 
 			self.state_size = reshaped_normalized_datapoint.shape[1]
+			print('GRAB-X State size: ', self.state_size)
 			# Subsample in time. 
 			number_of_timesteps = datapoint.shape[0]//self.ds_freq
 			# subsampled_data = resample(relevant_joints_datapoint, number_of_timesteps)
@@ -700,7 +701,7 @@ class GRABArmHand_PreDataset(GRAB_PreDataset):
 									 'lip_bottom',
 									 'right_lip_3'])
 
-		self.arm_and_hand_joint_names = np.array([ #'pelvis',
+		self.arm_and_hand_joint_names = np.array([ 'pelvis',
 												'left_shoulder', # index 0
 												'left_elbow',
 												'left_collar',
@@ -820,6 +821,11 @@ class GRABArmHand_PreDataset(GRAB_PreDataset):
 		self.relevant_joint_indices = self.arm_and_hand_joint_indices.astype(int)
 
 		return datapoint[:, self.relevant_joint_indices]
+	
+	def normalize(self, relevant_joints_datapoint):
+		joints = super().normalize(relevant_joints_datapoint)
+		# Remove pelvis from joints, regardless of normalization type
+		return joints[1:]
 
 	def getname(self):
 		return "GRABArmHand"
@@ -839,7 +845,6 @@ class GRABHand_Dataset(GRAB_Dataset):
 	def getname(self):
 		return "GRABHand"
 
-	# FOR NOW:
 	def __getitem__(self, index):
 
 		data_element = super().__getitem__(index)
@@ -1249,7 +1254,7 @@ class GRABArmHandObject_PreDataset(GRAB_PreDataset):
 									 'lip_bottom',
 									 'right_lip_3'])
 
-		self.arm_and_hand_joint_names = np.array([ #'pelvis',
+		self.arm_and_hand_joint_names = np.array([ 'pelvis',
 												'left_shoulder', # index 0
 												'left_elbow',
 												'left_collar',
