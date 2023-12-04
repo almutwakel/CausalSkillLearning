@@ -1905,23 +1905,26 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			self.traj_length = self.args.traj_length			
 			self.conditional_info_size = 0
 			self.test_set_size = 40
-			# stat_dir_name = self.args.data
+			stat_dir_name = self.args.data
 
-			# if self.args.normalization=='meanvar':
-			# 	self.norm_sub_value = np.load("Statistics/{0}/{0}_Mean.npy".format(stat_dir_name))
-			# 	self.norm_denom_value = np.load("Statistics/{0}/{0}_Var.npy".format(stat_dir_name))
-			# elif self.args.normalization=='minmax':
-			# 	self.norm_sub_value = np.load("Statistics/{0}/{0}_Min.npy".format(stat_dir_name))
-			# 	self.norm_denom_value = np.load("Statistics/{0}/{0}_Max.npy".format(stat_dir_name)) - self.norm_sub_value
+			if self.args.normalization=='meanvar':
+				self.norm_sub_value = np.load("Statistics/{0}/{0}_Mean.npy".format(stat_dir_name))
+				self.norm_denom_value = np.load("Statistics/{0}/{0}_Var.npy".format(stat_dir_name))
+			elif self.args.normalization=='minmax':
+				self.norm_sub_value = np.load("Statistics/{0}/{0}_Min.npy".format(stat_dir_name))
+				self.norm_denom_value = np.load("Statistics/{0}/{0}_Max.npy".format(stat_dir_name)) - self.norm_sub_value
 		
 		elif self.args.data in ['GRABHand']:
 			
-			self.state_size = 120
-			self.state_dim = 120
+			# self.state_size = 120
+			# self.state_dim = 120
 
-			if self.args.single_hand in ['left', 'right']:
-				self.state_dim //= 2
-				self.state_size //= 2
+			# if self.args.single_hand in ['left', 'right']:
+			# 	self.state_dim //= 2
+			# 	self.state_size //= 2
+
+			self.state_size = self.data.get_state_size()
+			self.state_dim = self.state_size
 
 			self.input_size = 2*self.state_size
 			self.hidden_size = self.args.hidden_size
@@ -1929,32 +1932,38 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			self.traj_length = self.args.traj_length			
 			self.conditional_info_size = 0
 			self.test_set_size = 40
-			# stat_dir_name = self.args.data
+			stat_dir_name = self.args.data
 
-			# if self.args.normalization=='meanvar':
-			# 	self.norm_sub_value = np.load("Statistics/{0}/{0}_Mean.npy".format(stat_dir_name))
-			# 	self.norm_denom_value = np.load("Statistics/{0}/{0}_Var.npy".format(stat_dir_name))
-			# elif self.args.normalization=='minmax':
-			# 	self.norm_sub_value = np.load("Statistics/{0}/{0}_Min.npy".format(stat_dir_name))
-			# 	self.norm_denom_value = np.load("Statistics/{0}/{0}_Max.npy".format(stat_dir_name)) - self.norm_sub_value
-
+			if self.args.normalization=='meanvar':
+				self.norm_sub_value = np.load("Statistics/{0}/{0}_Mean.npy".format(stat_dir_name))
+				self.norm_denom_value = np.load("Statistics/{0}/{0}_Var.npy".format(stat_dir_name))
+			elif self.args.normalization=='minmax':
+				self.norm_sub_value = np.load("Statistics/{0}/{0}_Min.npy".format(stat_dir_name))
+				self.norm_denom_value = np.load("Statistics/{0}/{0}_Max.npy".format(stat_dir_name)) - self.norm_sub_value
+				self.norm_denom_value[self.norm_denom_value==0.]=1.
+				
 			# Modify to zero out for now..
 			if self.args.skip_wrist:
 				self.norm_sub_value[:3] = 0.
 				self.norm_denom_value[:3] = 1.
+			
+			self.norm_denom_value[self.norm_denom_value==0.]=1.
 		
 		elif self.args.data in ['GRABArmHand']:
 			
-			if self.args.position_normalization == 'pelvis':
-				self.state_size = 144
-				self.state_dim = 144
+			self.state_size = self.data.get_state_size()
+			self.state_dim = self.state_size
 
-				if self.args.single_hand in ['left', 'right']:
-					self.state_dim //= 2
-					self.state_size //= 2
-			else:
-				self.state_size = 147
-				self.state_dim = 147
+			# if self.args.position_normalization == 'pelvis':
+			# 	self.state_size = 144
+			# 	self.state_dim = 144
+
+			# 	if self.args.single_hand in ['left', 'right']:
+			# 		self.state_dim //= 2
+			# 		self.state_size //= 2
+			# else:
+			# 	self.state_size = 147
+			# 	self.state_dim = 147
 			self.input_size = 2*self.state_size
 			self.hidden_size = self.args.hidden_size
 			self.output_size = self.state_size
@@ -1963,17 +1972,21 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			self.test_set_size = 40
 			# stat_dir_name = self.args.data
 
-			# if self.args.normalization=='meanvar':
-			# 	self.norm_sub_value = np.load("Statistics/{0}/{0}_Mean.npy".format(stat_dir_name))
-			# 	self.norm_denom_value = np.load("Statistics/{0}/{0}_Var.npy".format(stat_dir_name))
-			# elif self.args.normalization=='minmax':
-			# 	self.norm_sub_value = np.load("Statistics/{0}/{0}_Min.npy".format(stat_dir_name))
-			# 	self.norm_denom_value = np.load("Statistics/{0}/{0}_Max.npy".format(stat_dir_name)) - self.norm_sub_value
+			if self.args.normalization=='meanvar':
+				self.norm_sub_value = np.load("Statistics/{0}/{0}_Mean.npy".format(stat_dir_name))
+				self.norm_denom_value = np.load("Statistics/{0}/{0}_Var.npy".format(stat_dir_name))
+			elif self.args.normalization=='minmax':
+				self.norm_sub_value = np.load("Statistics/{0}/{0}_Min.npy".format(stat_dir_name))
+				self.norm_denom_value = np.load("Statistics/{0}/{0}_Max.npy".format(stat_dir_name)) - self.norm_sub_value
+				self.norm_denom_value[self.norm_denom_value==0.]=1.
 		
 		elif self.args.data in ['GRABArmHandObject']:
 			
-			self.state_size = 96
-			self.state_dim = 96
+			self.state_size = self.data.get_state_size()
+			self.state_dim = self.state_size
+
+			# self.state_size = 96
+			# self.state_dim = 96
 
 			self.input_size = 2*self.state_size
 			self.hidden_size = self.args.hidden_size
@@ -1983,12 +1996,13 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			self.test_set_size = 40
 			# stat_dir_name = self.args.data
 
-			# if self.args.normalization=='meanvar':
-			# 	self.norm_sub_value = np.load("Statistics/{0}/{0}_Mean.npy".format(stat_dir_name))
-			# 	self.norm_denom_value = np.load("Statistics/{0}/{0}_Var.npy".format(stat_dir_name))
-			# elif self.args.normalization=='minmax':
-			# 	self.norm_sub_value = np.load("Statistics/{0}/{0}_Min.npy".format(stat_dir_name))
-			# 	self.norm_denom_value = np.load("Statistics/{0}/{0}_Max.npy".format(stat_dir_name)) - self.norm_sub_value
+			if self.args.normalization=='meanvar':
+				self.norm_sub_value = np.load("Statistics/{0}/{0}_Mean.npy".format(stat_dir_name))
+				self.norm_denom_value = np.load("Statistics/{0}/{0}_Var.npy".format(stat_dir_name))
+			elif self.args.normalization=='minmax':
+				self.norm_sub_value = np.load("Statistics/{0}/{0}_Min.npy".format(stat_dir_name))
+				self.norm_denom_value = np.load("Statistics/{0}/{0}_Max.npy".format(stat_dir_name)) - self.norm_sub_value
+				self.norm_denom_value[self.norm_denom_value==0.]=1.
 
 		elif self.args.data in ['GRABObject']:
 			
@@ -2002,12 +2016,13 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			self.test_set_size = 40
 			# stat_dir_name = self.args.data
 
-			# if self.args.normalization=='meanvar':
-			# 	self.norm_sub_value = np.load("Statistics/{0}/{0}_Mean.npy".format(stat_dir_name))
-			# 	self.norm_denom_value = np.load("Statistics/{0}/{0}_Var.npy".format(stat_dir_name))
-			# elif self.args.normalization=='minmax':
-			# 	self.norm_sub_value = np.load("Statistics/{0}/{0}_Min.npy".format(stat_dir_name))
-			# 	self.norm_denom_value = np.load("Statistics/{0}/{0}_Max.npy".format(stat_dir_name)) - self.norm_sub_value
+			if self.args.normalization=='meanvar':
+				self.norm_sub_value = np.load("Statistics/{0}/{0}_Mean.npy".format(stat_dir_name))
+				self.norm_denom_value = np.load("Statistics/{0}/{0}_Var.npy".format(stat_dir_name))
+			elif self.args.normalization=='minmax':
+				self.norm_sub_value = np.load("Statistics/{0}/{0}_Min.npy".format(stat_dir_name))
+				self.norm_denom_value = np.load("Statistics/{0}/{0}_Max.npy".format(stat_dir_name)) - self.norm_sub_value
+				self.norm_denom_value[self.norm_denom_value==0.]=1.
 		
 		elif self.args.data in ['DAPG']:
 			
@@ -4341,7 +4356,7 @@ class PolicyManager_Joint(PolicyManager_BaseClass):
 			# 	self.state_dim //= 2
 			# 	self.state_size //= 2
 
-			self.state_size = self.data.state_size
+			self.state_size = self.data.get_state_size()
 			self.state_dim = self.state_size
 			
 			self.input_size = 2*self.state_size
@@ -4365,7 +4380,7 @@ class PolicyManager_Joint(PolicyManager_BaseClass):
 		
 		elif self.args.data in ['GRABArmHand']:
 			
-			self.state_size = self.data.state_size
+			self.state_size = self.data.get_state_size()
 			self.state_dim = self.state_size
 			# self.state_size = 144
 			# self.state_dim = 144
