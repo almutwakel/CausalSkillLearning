@@ -3128,29 +3128,8 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		elif self.args.data in ['Roboturk','OrigRoboturk','FullRoboturk','OrigRoboMimic','RoboMimic']:
 			self.state_dim = 8
 			self.rollout_timesteps = self.traj_length
-		elif self.args.data in ['GRAB']:
-			self.state_dim = 24
-			self.rollout_timesteps = self.traj_length
-		elif self.args.data in ['GRABArmHand']:
-			self.state_dim = 144
-			if self.args.single_hand in ['left', 'right']:
-				self.state_dim //= 2
-			if self.args.position_normalization != 'pelvis':
-				self.state_dim += 3
-			self.rollout_timesteps = self.traj_length
-		elif self.args.data in ['GRABArmHandObject']:
-			self.state_size = 93
-			self.state_dim = 93
-			if self.args.position_normalization != 'pelvis':
-				self.state_dim += 3
-			self.rollout_timesteps = self.traj_length
-		elif self.args.data in ['GRABObject']:
-			self.state_dim = 6
-			self.rollout_timesteps = self.traj_length
-		elif self.args.data in ['GRABHand']:
-			self.state_dim = 120
-			if self.args.single_hand in ['left', 'right']:
-				self.state_dim //= 2
+		elif self.args.data in ['GRAB', 'GRABHand', 'GRABArmHand', 'GRABArmHandObject']:
+			self.state_dim = self.dataset.get_state_size()
 			self.rollout_timesteps = self.traj_length
 		elif self.args.data in ['DAPG']:
 			self.state_dim = 51
