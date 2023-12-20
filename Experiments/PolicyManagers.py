@@ -1923,7 +1923,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			# 	self.state_dim //= 2
 			# 	self.state_size //= 2
 
-			self.state_size = self.data.get_state_size()
+			self.state_size = self.dataset.get_state_size()
 			self.state_dim = self.state_size
 
 			self.input_size = 2*self.state_size
@@ -1951,7 +1951,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		
 		elif self.args.data in ['GRABArmHand']:
 			
-			self.state_size = self.data.get_state_size()
+			self.state_size = self.dataset.get_state_size()
 			self.state_dim = self.state_size
 
 			# if self.args.position_normalization == 'pelvis':
@@ -1982,7 +1982,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		
 		elif self.args.data in ['GRABArmHandObject']:
 			
-			self.state_size = self.data.get_state_size()
+			self.state_size = self.dataset.get_state_size()
 			self.state_dim = self.state_size
 
 			# self.state_size = 96
@@ -4356,7 +4356,7 @@ class PolicyManager_Joint(PolicyManager_BaseClass):
 			# 	self.state_dim //= 2
 			# 	self.state_size //= 2
 
-			self.state_size = self.data.get_state_size()
+			self.state_size = self.dataset.get_state_size()
 			self.state_dim = self.state_size
 			
 			self.input_size = 2*self.state_size
@@ -4380,7 +4380,7 @@ class PolicyManager_Joint(PolicyManager_BaseClass):
 		
 		elif self.args.data in ['GRABArmHand']:
 			
-			self.state_size = self.data.get_state_size()
+			self.state_size = self.dataset.get_state_size()
 			self.state_dim = self.state_size
 			# self.state_size = 144
 			# self.state_dim = 144
