@@ -523,7 +523,7 @@ class GRAB_Dataset(Dataset):
 	def get_state_size(self):
 		if self.data_list is None or len(self.data_list)==0:
 			raise ValueError("Data list is empty. Cannot get state size.")
-		return self.data_list_array.shape[2]		
+		return self.data_list_array[0].shape[1]		
 
 	def getname(self):
 		return "GRAB"
