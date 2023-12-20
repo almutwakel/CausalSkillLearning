@@ -4416,7 +4416,7 @@ class PolicyManager_Joint(PolicyManager_BaseClass):
 			# self.state_size = 96
 			# self.state_dim = 96
 
-			self.state_size = self.data.state_size
+			self.state_size = self.dataset.get_state_size()
 			self.state_dim = self.state_size
 		
 			self.input_size = 2*self.state_size
