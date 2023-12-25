@@ -172,7 +172,7 @@ class DAPG_PreDataset(Dataset):
 		return relevant_joints_datapoint
 
 	def getname(self):
-		return "DAPG"
+		return "DAPGFull"
 
 	def __len__(self):
 		return self.total_length
@@ -313,7 +313,7 @@ class DAPG_Dataset(Dataset):
 
 
 	def getname(self):
-		return "DAPG"
+		return "DAPGFull"
 
 	def __len__(self):
 		# Return length of file list. 

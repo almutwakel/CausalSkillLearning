@@ -351,7 +351,7 @@ def parse_arguments():
 	parser.add_argument('--condition_size',dest='condition_size',type=int,default=4)
 	parser.add_argument('--smoothen', dest='smoothen',type=int,default=0) # Whether to smoothen the original dataset. 
 	parser.add_argument('--smoothing_kernel_bandwidth', dest='smoothing_kernel_bandwidth',type=float,default=3.5) # The smoothing bandwidth that is applied to data loader trajectories. 
-	parser.add_argument('--human_pos_normalization', dest='position_normalization', type=str, default='pelvis') # The position normalization for GRAB dataloader
+	parser.add_argument('--human_pos_normalization', dest='position_normalization', type=str, default='none') # The position normalization for GRAB dataloader
 	parser.add_argument('--human_angular_data', dest='angular_data', type=bool, default=False) # Angular transformations for the GRABHand Dataset
 	parser.add_argument('--skip_wrist',dest='skip_wrist',type=int,default=0,help='Whether or not to skip the wrist joint.')
 

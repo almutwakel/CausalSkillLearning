@@ -383,6 +383,7 @@ class GRAB_PreDataset(Dataset):
 		return self.state_size
 
 	def normalize(self, relevant_joints_datapoint):
+		# Supports single hand. Does not normalize object data.
 		if len(relevant_joints_datapoint) == 0:
 			return relevant_joints_datapoint
 		if self.args.position_normalization == 'pelvis':
