@@ -1151,14 +1151,18 @@ class PolicyManager_BaseClass():
 			self.ground_truth_gif = self.visualizer.visualize_joint_trajectory(unnorm_gt_trajectory, gif_path=self.dir_name, gif_name="Traj_{0}_GIF_GT.gif".format(str(i).zfill(3)), return_and_save=True, end_effector=self.args.ee_trajectories, task_id=env_name)
 
 		# Set plot scaling
-		# plot_scale = self.norm_denom_value[6:9].max()
-		plot_scale = self.norm_denom_value.max()
+			# For the NDAX data: Use the dimensions 7-9 for the hand position. 
+		plot_scale = self.norm_denom_value[6:9].max()
+		# plot_scale = self.norm_denom_value.max()
 
 		# Also plotting trajectory against time. 
 		plt.close()
+		
+		# For the NDAX data: USe the first 6 dimensions for the motor angles.
 		# plt.plot(range(unnorm_gt_trajectory.shape[0]),unnorm_gt_trajectory[:,:7])
-		# plt.plot(range(unnorm_gt_trajectory.shape[0]),unnorm_gt_trajectory[:,6:9])
-		plt.plot(range(unnorm_gt_trajectory.shape[0]),unnorm_gt_trajectory)
+		# For the NDAX data: Use the dimensions 7-9 for the hand position. 
+		plt.plot(range(unnorm_gt_trajectory.shape[0]),unnorm_gt_trajectory[:,6:9])
+		# plt.plot(range(unnorm_gt_trajectory.shape[0]),unnorm_gt_trajectory)
 		ax = plt.gca()
 		ax.set_ylim([-plot_scale, plot_scale])
 		plt.savefig(os.path.join(self.dir_name,"Traj_{0}_Plot_GT.png".format(str(i).zfill(3))))
@@ -1170,9 +1174,13 @@ class PolicyManager_BaseClass():
 
 		# Also plotting trajectory against time. 
 		plt.close()
+
+		# For the NDAX data: USe the first 6 dimensions for the motor angles.
 		# plt.plot(range(unnorm_pred_trajectory.shape[0]),unnorm_pred_trajectory[:,:7])
-		# plt.plot(range(unnorm_pred_trajectory.shape[0]),unnorm_pred_trajectory[:,6:9])
-		plt.plot(range(unnorm_pred_trajectory.shape[0]),unnorm_pred_trajectory)
+		# For the NDAX data: Use the dimensions 7-9 for the hand position. 
+		plt.plot(range(unnorm_pred_trajectory.shape[0]),unnorm_pred_trajectory[:,6:9])
+		# Otherwise use all.
+		# plt.plot(range(unnorm_pred_trajectory.shape[0]),unnorm_pred_trajectory)
 		ax = plt.gca()
 		ax.set_ylim([-plot_scale, plot_scale])
 
@@ -3853,11 +3861,14 @@ class PolicyManager_BatchPretrain(PolicyManager_Pretrain):
 			# If normalization is set to some value.
 			if self.args.normalization=='meanvar' or self.args.normalization=='minmax':
 				batch_trajectory = (batch_trajectory-self.norm_sub_value)/self.norm_denom_value
-				self.normalized_subsampled_relative_object_state = (self.subsampled_relative_object_state - self.norm_sub_value[-self.args.env_state_size:])/self.norm_denom_value[-self.args.env_state_size:]
+
+				if self.args.data not in ['NDAX','NDAXMotorAngles']:
+					self.normalized_subsampled_relative_object_state = (self.subsampled_relative_object_state - self.norm_sub_value[-self.args.env_state_size:])/self.norm_denom_value[-self.args.env_state_size:]
 
 			# Compute actions.
 			action_sequence = np.diff(batch_trajectory,axis=1)
-			self.relative_object_state_actions = np.diff(self.normalized_subsampled_relative_object_state, axis=1)
+			if self.args.data not in ['NDAX','NDAXMotorAngles']:
+				self.relative_object_state_actions = np.diff(self.normalized_subsampled_relative_object_state, axis=1)
 
 			# Concatenate
 			concatenated_traj = self.concat_state_action(batch_trajectory, action_sequence)
