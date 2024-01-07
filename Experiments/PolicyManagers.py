@@ -3479,7 +3479,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		# Use the dataset to get reasonable trajectories (because without the information bottleneck / KL between N(0,1), cannot just randomly sample.)
 		# # for i in range(self.N//self.args.batch_size+1, 32)
 		# for i in range(0, self.N, self.args.batch_size):
-		for i in range(math.ceil(self.N/self.args.batch_size)):
+		for i in range(math.ceil(min(self.N, len(self.dataset))/self.args.batch_size)):
 
 			# Mapped index
 			number_batches_for_dataset = math.ceil(self.N/self.args.batch_size)
@@ -3488,7 +3488,6 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			########################################
 			# (1) Encoder trajectory. 
 			########################################
-			print("Debug", "N_B_F_D", math.ceil(self.N/self.args.batch_size), "i", i, "j", j, "j*b_s", j*self.args.batch_size)
 			latent_z, sample_trajs, _, data_element = self.run_iteration(0, j*self.args.batch_size, return_z=True, and_train=False)
 
 			########################################
@@ -3757,10 +3756,7 @@ class PolicyManager_BatchPretrain(PolicyManager_Pretrain):
 			# Because of the new creation of index_list in random shuffling, this should be safe to index dataset with.
 
 			# print("Getting data element, b: ", b, "i+b ", i+b, "index_list[i+b]: ", self.index_list[i+b])
-			try:
-				index = self.index_list[i+b]
-			except:
-				embed()
+			index = self.index_list[i+b]
 
 			if self.args.train:
 				self.coverage[index] += 1
