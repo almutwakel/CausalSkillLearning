@@ -3488,7 +3488,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			########################################
 			# (1) Encoder trajectory. 
 			########################################
-
+			print("Debug", "N_B_F_D", math.ceil(self.N/self.args.batch_size), "i", i, "j", j, "j*b_s", j*self.args.batch_size)
 			latent_z, sample_trajs, _, data_element = self.run_iteration(0, j*self.args.batch_size, return_z=True, and_train=False)
 
 			########################################
