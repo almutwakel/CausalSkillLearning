@@ -3757,7 +3757,10 @@ class PolicyManager_BatchPretrain(PolicyManager_Pretrain):
 			# Because of the new creation of index_list in random shuffling, this should be safe to index dataset with.
 
 			# print("Getting data element, b: ", b, "i+b ", i+b, "index_list[i+b]: ", self.index_list[i+b])
-			index = self.index_list[i+b]
+			try:
+				index = self.index_list[i+b]
+			except:
+				breakpoint()
 
 			if self.args.train:
 				self.coverage[index] += 1
