@@ -4962,8 +4962,8 @@ class PolicyManager_Joint(PolicyManager_BaseClass):
 
 				# Feeding as list of image because gif_summary.				
 
-				# print("Embedding in joint update plots, L2511 ")
-				# embed()
+				print("Embedding in joint update plots, L2511 ")
+				embed()
 
 				log_dict['GT Trajectory'] = self.return_wandb_gif(gt_trajectory_image)
 				log_dict['Variational Rollout'] = self.return_wandb_gif(variational_rollout_image)
