@@ -19,7 +19,7 @@ from Visualizers import BaxterVisualizer, SawyerVisualizer, FrankaVisualizer, To
 
 # from Visualizers import *
 # import TFLogger, DMP, RLUtils
-import DMP, RLUtils
+import DMP, RLUtils, math
 
 # Check if CUDA is available, set device to GPU if it is, otherwise use CPU.
 use_cuda = torch.cuda.is_available()
@@ -3479,7 +3479,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		# Use the dataset to get reasonable trajectories (because without the information bottleneck / KL between N(0,1), cannot just randomly sample.)
 		# # for i in range(self.N//self.args.batch_size+1, 32)
 		# for i in range(0, self.N, self.args.batch_size):
-		for i in range(self.N//self.args.batch_size+1):
+		for i in range(math.ceil(self.N/self.args.batch_size)):
 
 			# Mapped index
 			number_batches_for_dataset = (len(self.dataset)//self.args.batch_size)+1
