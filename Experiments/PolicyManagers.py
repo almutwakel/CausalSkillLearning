@@ -5333,7 +5333,7 @@ class PolicyManager_Joint(PolicyManager_BaseClass):
 		# self.total_variational_loss = (self.reinforce_variational_loss.sum() + self.args.kl_weight*kl_divergence.squeeze(1).sum()).sum()
 		
 		# self.total_variational_loss = (self.reinforce_variational_loss + self.args.kl_weight*kl_divergence.squeeze(1)).mean()
-		self.total_variational_loss = (self.reinforce_variational_loss + self.kl_weight*kl_divergence.squeeze(1)).sum()/(self.batch_mask[:-1].sum())
+		self.total_variational_loss = (self.reinforce_variational_loss + self.args.kl_weight*kl_divergence.squeeze(1)).sum()/(self.batch_mask[:-1].sum())
 
 		######################################################
 		# Set other losses, subpolicy, latent, and prior.
