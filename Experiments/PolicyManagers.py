@@ -5449,7 +5449,7 @@ class PolicyManager_Joint(PolicyManager_BaseClass):
 
 		############# (0) #############
 		# Get sample we're going to train on. Single sample as of now.
-		_ , sample_action_seq, concatenated_traj, old_concatenated_traj = self.collect_inputs(i)
+		_ , sample_action_seq, concatenated_traj, old_concatenated_traj, data_element = self.collect_inputs(i)
 				
 		if self.args.batch_size>1: 
 			self.selected_index = 0
