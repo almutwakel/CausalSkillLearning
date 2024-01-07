@@ -3482,7 +3482,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		for i in range(math.ceil(self.N/self.args.batch_size)):
 
 			# Mapped index
-			number_batches_for_dataset = (len(self.dataset)//self.args.batch_size)+1
+			number_batches_for_dataset = math.ceil(self.N/self.args.batch_size)
 			j = i % number_batches_for_dataset
 
 			########################################
