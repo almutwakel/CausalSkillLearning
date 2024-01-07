@@ -1397,6 +1397,8 @@ class PolicyManager_BaseClass():
 		return [wandb.Image(image.transpose(1,2,0))]		
 
 	def return_wandb_gif(self, gif):
+		if not gif:
+			return None
 		return wandb.Video(gif.transpose((0,3,1,2)), fps=4, format='gif')
 
 	def corrupt_inputs(self, input):
