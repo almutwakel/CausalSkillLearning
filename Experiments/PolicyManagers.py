@@ -198,7 +198,7 @@ class PolicyManager_BaseClass():
 			else:
 				return sample_traj, sample_action_seq, concatenated_traj, old_concatenated_traj
 
-		elif self.args.data in global_data_list:
+		elif self.args.data in global_dataset_list:
 
 			# If we're imitating... select demonstrations from the particular task.
 			if self.args.setting=='imitation' and \
@@ -5718,7 +5718,7 @@ class PolicyManager_Joint(PolicyManager_BaseClass):
 
 		if input_dictionary is None:
 			input_dictionary = {}
-			input_dictionary['sample_traj'], input_dictionary['sample_action_seq'], input_dictionary['concatenated_traj'], input_dictionary['old_concatenated_traj'] = self.collect_inputs(i, special_indices=special_indices, called_from_train=True, bucket_index=bucket_index)
+			input_dictionary['sample_traj'], input_dictionary['sample_action_seq'], input_dictionary['concatenated_traj'], input_dictionary['old_concatenated_traj'], data_element = self.collect_inputs(i, special_indices=special_indices, called_from_train=True, bucket_index=bucket_index)
 			if self.args.task_discriminability or self.args.task_based_supervision:
 				input_dictionary['sample_task_id'] = self.input_task_id
 
