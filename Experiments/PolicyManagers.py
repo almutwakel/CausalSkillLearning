@@ -3760,7 +3760,7 @@ class PolicyManager_BatchPretrain(PolicyManager_Pretrain):
 			try:
 				index = self.index_list[i+b]
 			except:
-				breakpoint()
+				embed()
 
 			if self.args.train:
 				self.coverage[index] += 1
