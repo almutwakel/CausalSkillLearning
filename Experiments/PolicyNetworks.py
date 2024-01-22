@@ -13,6 +13,28 @@ device = torch.device("cuda" if use_cuda else "cpu")
 # if use_cuda:
 # 	torch.cuda.set_device(2)
 
+class PositionalEncoding(torch.nn.Module):
+
+    def __init__(self, d_model: int, dropout: float = 0.1, max_len: int = 500):
+        super().__init__()
+        import math
+        self.dropout = torch.nn.Dropout(p=dropout)
+
+        position = torch.arange(max_len).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, d_model, 2) * (-math.log(10000.0) / d_model))
+        pe = torch.zeros(max_len, 1, d_model)
+        pe[:, 0, 0::2] = torch.sin(position * div_term)
+        pe[:, 0, 1::2] = torch.cos(position * div_term)
+        self.register_buffer('pe', pe)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Arguments:
+            x: Tensor, shape ``[seq_len, batch_size, embedding_dim]``
+        """
+        x = x + self.pe[:x.size(0)]
+        return self.dropout(x)
+
 class PolicyNetwork_BaseClass(torch.nn.Module):
 	
 	def __init__(self):
@@ -147,6 +169,10 @@ class ContinuousPolicyNetwork(PolicyNetwork_BaseClass):
 		self.mean_output_layer = torch.nn.Linear(self.hidden_size,self.output_size)
 		self.variances_output_layer = torch.nn.Linear(self.hidden_size, self.output_size)
 
+		# IF we're using positional encodings:
+		if self.args.positional_encoding:
+			self.positional_encoding_layer = PositionalEncoding(self.size_dict['input_size'])
+
 		# # Try initializing the network to something, so that we can escape the stupid constant output business.
 		if small_init:
 			for name, param in self.mean_output_layer.named_parameters():
@@ -178,8 +204,14 @@ class ContinuousPolicyNetwork(PolicyNetwork_BaseClass):
 		else:
 			format_action_seq = action_sequence.view(action_sequence.shape[0], batch_size, self.output_size)
 
+		if self.args.positional_encoding:
+			# Encode add positional encoding to the input. 
+			new_input = self.positional_encoding_layer(format_input)
+		else:
+			new_input = format_input	
+
 		# format_action_seq = torch.from_numpy(action_sequence).to(device).float().view(action_sequence.shape[0],1,self.output_size)
-		lstm_outputs, hidden = self.lstm(format_input)
+		lstm_outputs, hidden = self.lstm(new_input)
 
 		########################################
 		# Predict Gaussian Mean.
@@ -1921,8 +1953,6 @@ class ContinuousVariationalPolicyNetwork_Batch(ContinuousVariationalPolicyNetwor
 		return self.forward(input, epsilon, precomputed_b=precomputed_b, evaluate_z_probability=evaluate_value)
 
 
-
-
 class ContinuousContextualVariationalPolicyNetwork(ContinuousVariationalPolicyNetwork_Batch):
 
 	def __init__(self, input_size, hidden_size, z_dimensions, args, number_layers=4):
@@ -2393,6 +2423,10 @@ class ContinuousEncoderNetwork(PolicyNetwork_BaseClass):
 		self.variance_activation_bias = 0.
 		self.variance_factor = self.args.variance_factor
 
+		# IF we're using positional encodings:
+		if self.args.positional_encoding:
+			self.positional_encoding_layer = PositionalEncoding(self.size_dict['input_size'])
+
 	def define_networks(self, input_size, output_size):
 		
 		# Define a bidirectional LSTM now.
@@ -2428,13 +2462,19 @@ class ContinuousEncoderNetwork(PolicyNetwork_BaseClass):
 		if artificial_batch_size is not None:
 			batch_size = artificial_batch_size
 		
-		format_input = input.view((input.shape[0], batch_size, size_dict['input_size']))
+		format_input = input.view((input.shape[0], batch_size, size_dict['input_size']))		
+
+		if self.args.positional_encoding:
+			# Encode add positional encoding to the input. 
+			new_input = self.positional_encoding_layer(format_input)
+		else:
+			new_input = format_input	
 
 		##############################
 		# Forward pass through LSTM. 
 		##############################
 				
-		outputs, hidden = network_dict['lstm'](format_input)
+		outputs, hidden = network_dict['lstm'](new_input)
 		concatenated_outputs = torch.cat([outputs[0,:,self.hidden_size:],outputs[-1,:,:self.hidden_size]],dim=-1).view((1,batch_size,-1))
 
 		##############################

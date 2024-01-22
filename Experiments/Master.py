@@ -161,8 +161,8 @@ class Master():
 			print("Creating Datasets")			
 			self.dataset = return_dataset(self.args, create_dataset_variation=self.args.dataset_variation)			
 
-		print("Embed after dataset creation")
-		embed()
+		# print("Embed after dataset creation")
+		# embed()
 
 		# Now define policy manager.
 		if self.args.setting in ['learntsub', 'joint']:
@@ -400,6 +400,7 @@ def parse_arguments():
 	parser.add_argument('--var_entropy',dest='var_entropy',type=int,default=0)
 	parser.add_argument('--ent_weight',dest='ent_weight',type=float,default=0.)
 	parser.add_argument('--var_ent_weight',dest='var_ent_weight',type=float,default=2.)
+	parser.add_argument('--positional_encoding',dest='positional_encoding',type=float, default=0., help='Whether or not to use positional encoding layers in the models.')
 	
 	parser.add_argument('--pretrain_bias_sampling',type=float,default=0.) # Defines percentage of trajectory within which to sample trajectory segments for pretraining.
 	parser.add_argument('--pretrain_bias_sampling_prob',type=float,default=0.)

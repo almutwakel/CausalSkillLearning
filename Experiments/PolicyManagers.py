@@ -37,7 +37,9 @@ global_dataset_list = ['MIME','OldMIME','Roboturk','OrigRoboturk','FullRoboturk'
 			'RoboturkMultiObjets', 'RoboturkRobotMultiObjects', \
 			'MOMARTPreproc', 'MOMART', 'MOMARTObject', 'MOMARTRobotObject', 'MOMARTRobotObjectFlat', \
 			'FrankaKitchenPreproc', 'FrankaKitchen', 'FrankaKitchenObject', 'FrankaKitchenRobotObject', \
-			'RealWorldRigid', 'RealWorldRigidRobot', 'RealWorldRigidJEEF', 'RealWorldRigidJEEFAbsRelObj', 'NDAX', 'NDAXMotorAngles', 'NDAXv2']
+			'RealWorldRigid', 'RealWorldRigidRobot', 'RealWorldRigidJEEF', 'RealWorldRigidJEEFAbsRelObj', \
+			'RealWorldRigidHuman', \
+			'NDAX', 'NDAXMotorAngles', 'NDAXv2']
 
 class PolicyManager_BaseClass():
 
@@ -132,7 +134,9 @@ class PolicyManager_BaseClass():
 		elif self.args.data in ['MOMARTRobotObject', 'MOMARTRobotObjectFlat']:			
 			if not hasattr(self, 'visualizer'):
 				self.visualizer = FetchMOMARTVisualizer(args=self.args)
-		elif self.args.data in ['RealWorldRigid', 'NDAX', 'NDAXMotorAngles', 'NDAXv2', 'RealWorldRigidRobot', 'RealWorldRigidJEEF', 'RealWorldRigidJEEFAbsRelObj']:
+		elif self.args.data in ['RealWorldRigid', 'NDAX', 'NDAXMotorAngles', 'NDAXv2', \
+						  'RealWorldRigidRobot', 'RealWorldRigidJEEF', 'RealWorldRigidJEEFAbsRelObj',\
+							'RealWorldRigidHuman']:
 			self.visualizer = DatasetImageVisualizer(args=self.args)
 		else:
 			self.visualizer = ToyDataVisualizer()
@@ -471,7 +475,9 @@ class PolicyManager_BaseClass():
 			if not hasattr(self, 'visualizer'):
 				self.visualizer = FetchMOMARTVisualizer(args=self.args)
 		# elif self.args.data in ['RealWorldRigid', 'NDAX', 'NDAXMotorAngles', 'NDAXv2']:
-		elif self.args.data in ['RealWorldRigid', 'NDAX', 'NDAXMotorAngles', 'NDAXv2', 'RealWorldRigidRobot', 'RealWorldRigidJEEF', 'RealWorldRigidJEEFAbsRelObj']:
+		elif self.args.data in ['RealWorldRigid', 'NDAX', 'NDAXMotorAngles', 'NDAXv2', \
+						  'RealWorldRigidRobot', 'RealWorldRigidJEEF', 'RealWorldRigidJEEFAbsRelObj',\
+							'RealWorldRigidHuman']:
 			self.visualizer = DatasetImageVisualizer(args=self.args)
 		else: 
 			self.visualizer = ToyDataVisualizer()
@@ -621,7 +627,7 @@ class PolicyManager_BaseClass():
 
 					#######################
 					# Create env for batch.
-					if not(self.args.data in ['RealWorldRigid', 'NDAX', 'NDAXMotorAngles','NDAXv2']):
+					if not(self.args.data in ['RealWorldRigid', 'RealWorldRigidHuman', 'NDAX', 'NDAXMotorAngles','NDAXv2']):
 						self.per_batch_env_management(data_element[0])
 
 					for b in range(self.args.batch_size):
@@ -763,7 +769,7 @@ class PolicyManager_BaseClass():
 		self.write_results_HTML(plots_or_gif='Plot')
 		
 		viz_embeddings = True
-		if (self.args.data in ['RealWorldRigid', 'RealWorldRigidRobot', 'NDAXv2']) and (self.args.images_in_real_world_dataset==0):
+		if (self.args.data in ['RealWorldRigid', 'RealWorldRigidRobot', 'RealWorldRigidHuman','NDAXv2']) and (self.args.images_in_real_world_dataset==0):
 			viz_embeddings = False
 
 		if viz_embeddings:
@@ -1147,7 +1153,7 @@ class PolicyManager_BaseClass():
 		# For now
 		##############################
 
-		if self.args.data in ['RealWorldRigid', 'NDAXv2'] and self.args.images_in_real_world_dataset:
+		if self.args.data in ['RealWorldRigid', 'NDAXv2', 'RealWorldRigidHuman'] and self.args.images_in_real_world_dataset:
 			# This should already be segmented to the right start and end point...		
 			self.ground_truth_gif = self.visualizer.visualize_prerendered_gif(indexed_data_element['subsampled_images'], gif_path=self.dir_name, gif_name="Traj_{0}_GIF_GT.gif".format(str(i).zfill(3)))
 		else:			
@@ -2387,10 +2393,26 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 
 		elif self.args.data in ['RealWorldRigidHuman']:
 
-			self.state_size = 77
-			self.state_dim = 77			
-			# Set orientation dimensions to be unnormalized.
-			
+			self.state_size = 53
+			self.state_dim = 53			
+			# set the last few elements of data to be unnoramlized, they're empty for now.. 
+
+			# Hand orientation. 
+			self.norm_denom_value[21:25] = 1.
+			self.norm_sub_value[21:25] = 0. 
+
+			# Object 1 Orientation:
+			self.norm_denom_value[28:32] = 1.
+			self.norm_sub_value[28:32] = 0. 
+
+			# Object 2 Orientation. 
+			self.norm_denom_value[35:39] = 1.
+			self.norm_sub_value[35:39] = 0. 
+
+			# Padded dimensions. 
+			self.norm_denom_value[-14:] = 1.
+			self.norm_sub_value[-14:] = 0.
+
 
 		self.input_size = 2*self.state_size
 		self.hidden_size = self.args.hidden_size
@@ -3754,7 +3776,6 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		# 1) Create KD Trees.
 		self.create_z_kdtrees()	
 
-
 	def query_z_robot_kdtrees_with_N_by_2_trajectories(self):
 
 		# 0) Create KD trees with N/2 trajectories.
@@ -3904,7 +3925,6 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			self.nn_accuracy_robot_env['skill']['metric_2']['{}'.format(knn)] = np.sum(self.nn_similarity_robot_env['skill']['{}'.format(knn)] >= 1.) / (rows/2)
 			self.nn_accuracy_robot_env['task']['metric_1']['{}'.format(knn)] = np.sum(self.nn_similarity_robot_env['task']['{}'.format(knn)]) / ((rows/2)*knn)
 			self.nn_accuracy_robot_env['task']['metric_2']['{}'.format(knn)] = np.sum(self.nn_similarity_robot_env['task']['{}'.format(knn)] >= 1.) / (rows/2)
-
 
 	def evaluate_z_distances_for_batch(self, latent_z):
 
@@ -4073,7 +4093,7 @@ class PolicyManager_BatchPretrain(PolicyManager_Pretrain):
 						else:
 							batch_trajectory[x] = data_element['demo'][start_timepoint:end_timepoint,:-1]
 
-					if self.args.data in ['RealWorldRigid', 'RealWorldRigidJEEF', 'RealWorldRigidJEEFAbsRelObj', 'NDAXv2']:
+					if self.args.data in ['RealWorldRigid', 'RealWorldRigidJEEF', 'RealWorldRigidJEEFAbsRelObj', 'NDAXv2', 'RealWorldRigidHuman'] and self.args.images_in_real_world_dataset:
 
 						# Truncate the images to start and end timepoint. 
 						data_element[x]['subsampled_images'] = data_element[x]['images'][start_timepoint:end_timepoint]
@@ -6847,7 +6867,7 @@ class PolicyManager_BatchJoint(PolicyManager_Joint):
 				else:					
 					batch_trajectory[x,:self.batch_trajectory_lengths[x]] = data_element[x]['demo']
 
-				if self.args.data in ['RealWorldRigid', 'RealWorldRigidJointEEF', 'NDAXv2'] and self.args.images_in_real_world_dataset:
+				if self.args.data in ['RealWorldRigid', 'RealWorldRigidHuman', 'RealWorldRigidJointEEF', 'NDAXv2'] and self.args.images_in_real_world_dataset:
 					data_element[x]['subsampled_images'] = data_element[x]['images']
 			
 			# If normalization is set to some value.
