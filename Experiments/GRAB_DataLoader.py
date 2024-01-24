@@ -551,6 +551,7 @@ class GRAB_Dataset(Dataset):
 		data_element = {}
 		data_element['is_valid'] = True
 		data_element['demo'] = self.data_list[index]
+		data_element['data_element'] = self.data_list[index]
 		data_element['file'] = self.filelist[index]
 		data_element['task-id'] = index	
 		data_element['task_id'] = index	
