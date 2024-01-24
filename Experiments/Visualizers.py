@@ -987,8 +987,8 @@ class DAPGVisualizer(SawyerVisualizer):
 	def __init__(self, args=None):
 		super().__init__()
 		self.args = args
-		# self.environment = GymEnv("relocate-v0")
-		# self.env_name = "relocate-v0"
+		self.environment = GymEnv("relocate-v0")
+		self.env_name = "relocate-v0"
 
 	def visualize_joint_trajectory(self, trajectory, return_gif=False, gif_path=None, gif_name="Traj.gif", segmentations=None, return_and_save=False, additional_info=None, end_effector=False, task_id=None):
 		image_list = []
@@ -1020,7 +1020,7 @@ class DAPGVisualizer(SawyerVisualizer):
 
 	def create_environment(self, task_id=None):
 		# [:-6] drops "_demos" suffix
-		if task_id is None or not self.env_name:
+		if task_id is None:
 			print("create_environment failed |", "task_id is None")
 			self.environment = GymEnv("relocate-v0")
 			self.env_name = "relocate-v0"
