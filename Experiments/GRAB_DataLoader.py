@@ -547,6 +547,7 @@ class GRAB_Dataset(Dataset):
 		data_element['demo'] = self.data_list[index]
 		data_element['file'] = self.filelist[index]
 		data_element['task-id'] = index	
+		data_element['task_id'] = index	
 
 		return data_element
 
