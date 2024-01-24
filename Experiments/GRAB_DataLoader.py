@@ -81,6 +81,9 @@ class GRAB_PreDataset(Dataset):
 		# Get number of files. 
 		self.total_length = len(self.filelist)
 
+		# Create environment names list
+		self.environment_names = ["GRAB" for _ in range(self.total_length)]
+
 		# Set downsampling frequency.
 		self.ds_freq = 16
 
@@ -503,6 +506,9 @@ class GRAB_Dataset(Dataset):
 		self.filelist = np.load(os.path.join(self.dataset_directory, self.getname() + "_OrderedFileList.npy"), allow_pickle=True)
 
 		self.dataset_length = len(self.data_list)
+
+		# Create environment names list
+		self.environment_names = ["GRAB" for _ in range(self.total_length)]
 
 		if self.args.dataset_traj_length_limit>0:			
 			self.short_data_list = []
