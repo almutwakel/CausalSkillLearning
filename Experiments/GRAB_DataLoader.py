@@ -508,7 +508,7 @@ class GRAB_Dataset(Dataset):
 		self.dataset_length = len(self.data_list)
 
 		# Create environment names list
-		self.environment_names = ["GRAB" for _ in range(self.total_length)]
+		self.environment_names = ["GRAB" for _ in range(self.dataset_length)]
 
 		if self.args.dataset_traj_length_limit>0:			
 			self.short_data_list = []
