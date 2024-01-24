@@ -593,7 +593,7 @@ class PolicyManager_BaseClass():
 				if self.args.setting in ['learntsub','joint', 'queryjoint']:
 					
 					
-					input_dict, var_dict, eval_dict = self.run_iteration(0, j, return_dicts=True, train=False)
+					input_dict, var_dict = self.run_iteration(0, j, return_dicts=True, train=False)
 					latent_z = var_dict['latent_z_indices']
 					sample_trajs = input_dict['sample_traj']
 					data_element = input_dict['data_element']
