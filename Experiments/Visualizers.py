@@ -1020,7 +1020,7 @@ class DAPGVisualizer(SawyerVisualizer):
 
 	def create_environment(self, task_id=None):
 		# [:-6] drops "_demos" suffix
-		if task_id is None:
+		if task_id is None or not self.env_name:
 			print("create_environment failed |", "task_id is None")
 			self.environment = GymEnv("relocate-v0")
 			self.env_name = "relocate-v0"
