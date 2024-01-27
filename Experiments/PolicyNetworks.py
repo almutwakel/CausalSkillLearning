@@ -15,25 +15,26 @@ device = torch.device("cuda" if use_cuda else "cpu")
 
 class PositionalEncoding(torch.nn.Module):
 
-    def __init__(self, d_model: int, dropout: float = 0.1, max_len: int = 500):
-        super().__init__()
-        import math
-        self.dropout = torch.nn.Dropout(p=dropout)
+	def __init__(self, d_model: int, dropout: float = 0.1, max_len: int = 500):
+		super().__init__()
+		import math
+		self.dropout = torch.nn.Dropout(p=dropout)
 
-        position = torch.arange(max_len).unsqueeze(1)
-        div_term = torch.exp(torch.arange(0, d_model, 2) * (-math.log(10000.0) / d_model))
-        pe = torch.zeros(max_len, 1, d_model)
-        pe[:, 0, 0::2] = torch.sin(position * div_term)
-        pe[:, 0, 1::2] = torch.cos(position * div_term)
-        self.register_buffer('pe', pe)
+		position = torch.arange(max_len).unsqueeze(1)
+		div_term = torch.exp(torch.arange(0, d_model, 2) * (-math.log(10000.0) / d_model))
+		pe = torch.zeros(max_len, 1, d_model)
+		pe[:, 0, 0::2] = torch.sin(position * div_term)
+		pe[:, 0, 1::2] = torch.cos(position * div_term)
+		self.register_buffer('pe', pe)
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Arguments:
-            x: Tensor, shape ``[seq_len, batch_size, embedding_dim]``
-        """
-        x = x + self.pe[:x.size(0)]
-        return self.dropout(x)
+	def forward(self, x: torch.Tensor) -> torch.Tensor:
+		"""
+		Arguments:
+			x: Tensor, shape ``[seq_len, batch_size, embedding_dim]``
+		"""
+		x = x + self.pe[:x.size(0)]
+	
+		return self.dropout(x)
 
 class PolicyNetwork_BaseClass(torch.nn.Module):
 	
@@ -171,7 +172,7 @@ class ContinuousPolicyNetwork(PolicyNetwork_BaseClass):
 
 		# IF we're using positional encodings:
 		if self.args.positional_encoding:
-			self.positional_encoding_layer = PositionalEncoding(self.size_dict['input_size'])
+			self.positional_encoding_layer = PositionalEncoding(self.input_size)
 
 		# # Try initializing the network to something, so that we can escape the stupid constant output business.
 		if small_init:
@@ -204,11 +205,14 @@ class ContinuousPolicyNetwork(PolicyNetwork_BaseClass):
 		else:
 			format_action_seq = action_sequence.view(action_sequence.shape[0], batch_size, self.output_size)
 
-		if self.args.positional_encoding:
-			# Encode add positional encoding to the input. 
-			new_input = self.positional_encoding_layer(format_input)
-		else:
-			new_input = format_input	
+		# if self.args.positional_encoding:
+		# 	# Encode add positional encoding to the input. 
+		# 	new_input = self.positional_encoding_layer(format_input)
+		# else:
+		# 	new_input = format_input	
+
+		# Using positional encoding along wiht the z's is kinda weird, so removing that. 
+		new_input = format_input
 
 		# format_action_seq = torch.from_numpy(action_sequence).to(device).float().view(action_sequence.shape[0],1,self.output_size)
 		lstm_outputs, hidden = self.lstm(new_input)
@@ -383,7 +387,6 @@ class ContinuousPolicyNetwork(PolicyNetwork_BaseClass):
 		kl_divergence = torch.distributions.kl_divergence(dist_z1, dist_z2)
 
 		return kl_divergence
-
 
 class ContinuousPolicyNetwork_ReconstructRelState(ContinuousPolicyNetwork):
 
@@ -2430,7 +2433,7 @@ class ContinuousEncoderNetwork(PolicyNetwork_BaseClass):
 	def define_networks(self, input_size, output_size):
 		
 		# Define a bidirectional LSTM now.
-		lstm = torch.nn.LSTM(input_size=input_size, hidden_size=self.hidden_size, num_layers=self.num_layers, bidirectional=True).to(device)
+		lstm = torch.nn.LSTM(input_size=input_size, hidden_size=self.hidden_size, num_layers=self.num_layers, bidirectional=True, dropout=self.args.dropout).to(device)
 
 		# Define output layers for the LSTM, and activations for this output layer. 
 		mean_output_layer = torch.nn.Linear(2*self.hidden_size, output_size).to(device)
@@ -2932,7 +2935,6 @@ class ContinuousMLP(torch.nn.Module):
 			self.batch_norm_layer3 = torch.nn.BatchNorm1d(self.hidden_size)
 			self.batch_norm_layer4 = torch.nn.BatchNorm1d(self.hidden_size)
 
-
 	def forward(self, input, greedy=False, action_epsilon=0.0001):
 
 		# Assumes input is Batch_Size x Input_Size.			
@@ -3128,54 +3130,54 @@ class DiscreteMLP(torch.nn.Module):
 		return self.forward(input)
 
 def mlp(sizes, activation, output_activation=torch.nn.Identity):
-    """
-    Build a multi-layer perceptron in PyTorch.
+	"""
+	Build a multi-layer perceptron in PyTorch.
 
-    Args:
-        sizes: Tuple, list, or other iterable giving the number of units
-            for each layer of the MLP. 
+	Args:
+		sizes: Tuple, list, or other iterable giving the number of units
+			for each layer of the MLP. 
 
-        activation: Activation function for all layers except last.
+		activation: Activation function for all layers except last.
 
-        output_activation: Activation function for last layer.
+		output_activation: Activation function for last layer.
 
-    Returns:
-        A PyTorch module that can be called to give the output of the MLP.
-        (Use an nn.Sequential module.)
+	Returns:
+		A PyTorch module that can be called to give the output of the MLP.
+		(Use an nn.Sequential module.)
 
-    """
-    layers = []
-    for j in range(len(sizes)-1):
-        act = activation if j < len(sizes)-2 else output_activation
-        layers += [torch.nn.Linear(sizes[j], sizes[j+1]), act()]
-    return torch.nn.Sequential(*layers)
+	"""
+	layers = []
+	for j in range(len(sizes)-1):
+		act = activation if j < len(sizes)-2 else output_activation
+		layers += [torch.nn.Linear(sizes[j], sizes[j+1]), act()]
+	return torch.nn.Sequential(*layers)
 
 def gaussian_likelihood(x, mu, log_std):
-    pre_sum = -0.5 * (((x-mu)/(torch.exp(log_std)+EPS))**2 + 2*log_std + np.log(2*np.pi))
-    return pre_sum.sum(axis=-1)
+	pre_sum = -0.5 * (((x-mu)/(torch.exp(log_std)+EPS))**2 + 2*log_std + np.log(2*np.pi))
+	return pre_sum.sum(axis=-1)
 
 class MLPGaussianActor(torch.nn.Module):
 
 
-    def __init__(self, obs_dim, act_dim, hidden_sizes, activation):
-        super().__init__()
+	def __init__(self, obs_dim, act_dim, hidden_sizes, activation):
+		super().__init__()
 
-        self.mu_net = mlp([obs_dim] + list(hidden_sizes) + [act_dim], activation)      
-        self.std_net = mlp([obs_dim] + list(hidden_sizes) + [act_dim], activation)
-        self.softplus_activation = torch.nn.Softplus()
+		self.mu_net = mlp([obs_dim] + list(hidden_sizes) + [act_dim], activation)      
+		self.std_net = mlp([obs_dim] + list(hidden_sizes) + [act_dim], activation)
+		self.softplus_activation = torch.nn.Softplus()
 
-    def forward(self, obs, act=None):
+	def forward(self, obs, act=None):
 
-        # Create mean and var. 
-        mean = self.mu_net(obs)
-        standard_deviation = self.softplus_activation(self.std_net(obs))
+		# Create mean and var. 
+		mean = self.mu_net(obs)
+		standard_deviation = self.softplus_activation(self.std_net(obs))
 
-        # Distribution. 
-        dist = torch.distributions.MultivariateNormal(mean, torch.diag_embed(standard_deviation))
+		# Distribution. 
+		dist = torch.distributions.MultivariateNormal(mean, torch.diag_embed(standard_deviation))
 
-        log_prob = None
-        if act is not None:
-            log_prob = dist.log_prob(act)
+		log_prob = None
+		if act is not None:
+			log_prob = dist.log_prob(act)
 
-        return dist, log_prob
+		return dist, log_prob
 

@@ -1364,7 +1364,8 @@ class PolicyManager_BaseClass():
 		fig, ax = plt.subplots()
 
 		# number_samples = 400
-		number_samples = self.N		
+		# number_samples = self.N	
+		number_samples = self.args.N_trajectories_to_visualize
 
 		# Create a scatter plot of the embedding itself. The plot does not seem to work without this. 
 		ax.scatter(scaled_embedded_zs[:number_samples,0],scaled_embedded_zs[:number_samples,1])
