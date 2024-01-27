@@ -1,5 +1,4 @@
-# KABOOM
-
+# YUZU
 
 # Copyright (c) Facebook, Inc. and its affiliates.
 # All rights reserved.
@@ -10,7 +9,7 @@
 from headers import *
 import DataLoaders, MIME_DataLoader, Roboturk_DataLoader, Mocap_DataLoader, Robomimic_DataLoaders, \
 	  GRAB_DataLoader, DAPG_DataLoader, DexMV_DataLoader, MOMART_DataLoader, FrankaKitchen_DataLoader, \
-		RealWorldRigid_DataLoader
+		RealWorldRigid_DataLoader, NDAX_DataLoader, RealWorldHumanRigid_DataLoader
 from PolicyManagers import *
 import TestClass
 import faulthandler
@@ -132,9 +131,27 @@ def return_dataset(args, data=None, create_dataset_variation=False):
 		dataset = RealWorldRigid_DataLoader.RealWorldRigid_PreDataset(args)
 	elif args.data in ['RealWorldRigid','RealWorldRigidRobot']:
 		dataset = RealWorldRigid_DataLoader.RealWorldRigid_Dataset(args)
+	elif args.data in ['RealWorldRigidJEEF']:
+		dataset = RealWorldRigid_DataLoader.RealWorldRigid_JointEEFDataset(args)
+	elif args.data in ['RealWorldRigidJEEFAbsRelObj']:
+		dataset = RealWorldRigid_DataLoader.RealWorldRigid_JointEEF_AbsRelObj_Dataset(args)
+	############################
+	elif args.data in ['NDAXPreproc']:
+		dataset = NDAX_DataLoader.NDAXInterface_PreDataset(args)
+	elif args.data in ['NDAXPreprocv2']:
+		dataset = NDAX_DataLoader.NDAXInterface_PreDataset_v2(args)		
+	elif args.data in ['NDAX', 'NDAXMotorAngles']:
+		dataset = NDAX_DataLoader.NDAXInterface_Dataset(args)
+	elif args.data in ['NDAXv2']:
+		dataset = NDAX_DataLoader.NDAXInterface_Dataset_v2(args)				
+	############################
+	elif args.data=='RealWorldRigidHumanPreproc':
+		dataset = RealWorldHumanRigid_DataLoader.RealWorldHumanRigid_PreDataset(args)
+	elif args.data=='RealWorldRigidHuman':
+		dataset = RealWorldHumanRigid_DataLoader.RealWorldHumanRigid_Dataset(args)
 
 	return dataset
-
+	
 class Master():
 
 	def __init__(self, arguments):
@@ -144,8 +161,8 @@ class Master():
 			print("Creating Datasets")			
 			self.dataset = return_dataset(self.args, create_dataset_variation=self.args.dataset_variation)			
 
-		# print("Embed after dataset creation")
-		# embed()
+		print("Finished Dataset Creation.")		
+		# embed()		
 
 		# Now define policy manager.
 		if self.args.setting in ['learntsub', 'joint']:
@@ -375,11 +392,15 @@ def parse_arguments():
 	parser.add_argument('--viz_gt_sim_rollout',dest='viz_gt_sim_rollout',type=int,default=0,help='Whether or not to visualize the GT trajectory by replaying through the simulator.')
 	parser.add_argument('--sim_viz_action_scale_factor',dest='sim_viz_action_scale_factor',type=float,default=0.3,help='Factor by which to scale actions when visualizing in simulation env.')
 	parser.add_argument('--sim_viz_step_repetition',dest='sim_viz_step_repetition',type=int,default=20,help='Number of times to repeat simulation step of visualization of traj.')
+	# Plot params
+	parser.add_argument('--plot_index_min', dest='plot_index_min', type=int, default=-1, help='Minimum index of dimensions to plot. ')
+	parser.add_argument('--plot_index_max', dest='plot_index_max', type=int, default=-1, help='Minimum index of dimensions to plot. ')
 
 	parser.add_argument('--entropy',dest='entropy',type=int,default=0)
 	parser.add_argument('--var_entropy',dest='var_entropy',type=int,default=0)
 	parser.add_argument('--ent_weight',dest='ent_weight',type=float,default=0.)
 	parser.add_argument('--var_ent_weight',dest='var_ent_weight',type=float,default=2.)
+	parser.add_argument('--positional_encoding',dest='positional_encoding',type=float, default=0., help='Whether or not to use positional encoding layers in the models.')
 	
 	parser.add_argument('--pretrain_bias_sampling',type=float,default=0.) # Defines percentage of trajectory within which to sample trajectory segments for pretraining.
 	parser.add_argument('--pretrain_bias_sampling_prob',type=float,default=0.)
@@ -429,6 +450,12 @@ def parse_arguments():
 	parser.add_argument('--task_based_aux_loss_weight', dest='task_based_aux_loss_weight', type=float, default=0., help='Weight to place on task based auxillary loss.')
 	parser.add_argument('--negative_task_based_component_weight', dest='negative_task_based_component_weight', type=float, default=1., help='Weight to place on the negative component of the task based aux loss.')
 	parser.add_argument('--pairwise_z_distance_threshold', dest='pairwise_z_distance_threshold', type=float, default=2., help='Minimum distance to push apart different parts of latent space that are semantically different.')
+
+	# absolute state reconstruction
+	parser.add_argument('--cummulative_computed_state_reconstruction_loss_weight', dest='cummulative_computed_state_reconstruction_loss_weight', type=float, default=0., \
+					 help='Weight to place on the cummulative_computed_state_reconstruction_loss.')
+	parser.add_argument('--teacher_forced_state_reconstruction_loss_weight', dest='teacher_forced_state_reconstruction_loss_weight', type=float, default=0.,\
+					 help='Weight to set on teacher_forced_state_reconstruction_loss_weight. ')
 
 	# Cross Domain Skill Transfer parameters. 
 	parser.add_argument('--discriminability_weight',dest='discriminability_weight',type=float,default=1.,help='Weight of discriminability loss in cross domain skill transfer.') 
