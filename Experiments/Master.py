@@ -161,8 +161,8 @@ class Master():
 			print("Creating Datasets")			
 			self.dataset = return_dataset(self.args, create_dataset_variation=self.args.dataset_variation)			
 
-		# print("Embed after dataset creation")
-		# embed()
+		print("Finished Dataset Creation.")		
+		# embed()		
 
 		# Now define policy manager.
 		if self.args.setting in ['learntsub', 'joint']:
