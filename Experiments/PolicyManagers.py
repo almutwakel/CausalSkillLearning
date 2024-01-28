@@ -2967,28 +2967,29 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		# Set the relative state reconstruction loss.
 		if self.args.relative_state_reconstruction_loss_weight>0.:
 			self.compute_relative_state_reconstruction_loss()
+
 		if self.args.task_based_aux_loss_weight>0. or self.args.relative_state_phase_aux_loss_weight>0.:
 			self.compute_pairwise_z_distance(update_dict['latent_z'][0])
+		
+		# Computing z_env based auxillary loss based only on Z_ENV component. 
+		if self.args.auxillary_z_env_effect_z_loss_weight>0. :
+			self.compute_auxillary_z_env_effect_z_loss(update_dict=update_dict)
+
 		# Task based aux loss weight. 
 		if self.args.task_based_aux_loss_weight>0.:
 			self.compute_task_based_aux_loss(update_dict)
+
 		# Relative. 
 		if self.args.relative_state_phase_aux_loss_weight>0.:
 			self.compute_relative_state_phase_aux_loss(update_dict)
+		
+		# Cummulative / State Reconstruction Losses: 
 		if self.args.cummulative_computed_state_reconstruction_loss_weight>0. or self.args.teacher_forced_state_reconstruction_loss_weight>0.:
 			self.compute_absolute_state_reconstruction_loss()
 
 		# Weighting the auxillary loss...
-		self.aux_loss = self.relative_state_reconstruction_loss + self.relative_state_phase_aux_loss + self.task_based_aux_loss + self.absolute_state_reconstruction_loss
-
-	def compute_pairwise_z_distance(self, z_set):
-
-		# Compute pairwise task based weights.
-		self.pairwise_z_distance = torch.cdist(z_set, z_set)[0]
-
-		# Clamped z distance loss. 
-		# self.clamped_pairwise_z_distance = torch.clamp(self.pairwise_z_distance - self.args.pairwise_z_distance_threshold, min=0.)
-		self.clamped_pairwise_z_distance = torch.clamp(self.args.pairwise_z_distance_threshold - self.pairwise_z_distance, min=0.)
+		self.aux_loss = self.relative_state_reconstruction_loss + self.relative_state_phase_aux_loss \
+			  + self.task_based_aux_loss + self.absolute_state_reconstruction_loss + self.auxillary_z_env_effect_z_loss
 
 	def compute_relative_state_class_vectors(self, update_dict):
 
@@ -3020,6 +3021,15 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		self.thresholded_beta_vector = np.swapaxes((beta_vector>self.beta_threshold_value).astype(float), 0, 1)		
 		self.torch_thresholded_beta_vector = torch.tensor(self.thresholded_beta_vector).to(device)
 
+	def compute_pairwise_z_distance(self, z_set):
+
+		# Compute pairwise distances between z's. 
+		self.pairwise_z_distance = torch.cdist(z_set, z_set)[0]
+		
+		# Clamped z distance loss. 
+		# self.clamped_pairwise_z_distance = torch.clamp(self.pairwise_z_distance - self.args.pairwise_z_distance_threshold, min=0.)
+		self.clamped_pairwise_z_distance = torch.clamp(self.args.pairwise_z_distance_threshold - self.pairwise_z_distance, min=0.)
+
 	def compute_task_based_aux_loss(self, update_dict):
 
 		# Task list. 
@@ -3041,7 +3051,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		negative_weighted_task_loss = (1.-pairwise_task_matrix)*self.clamped_pairwise_z_distance
 
 		# Total task_based_aux_loss.
-		self.unweighted_task_based_aux_loss = (positive_weighted_task_loss + self.args.negative_task_based_component_weight*negative_weighted_task_loss).mean()
+		self.unweighted_task_based_aux_loss = (positive_weighted_task_loss + self.args.negative_component_weight*negative_weighted_task_loss).mean()
 		self.task_based_aux_loss = self.args.task_based_aux_loss_weight*self.unweighted_task_based_aux_loss
 
 	def compute_relative_state_phase_aux_loss(self, update_dict):
@@ -3060,7 +3070,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		negative_weighted_rel_state_phase_loss = (1.-self.relative_state_vector_similarity_matrix)*self.clamped_pairwise_z_distance
 
 		# Total rel state phase loss.
-		self.unweighted_relative_state_phase_aux_loss = (positive_weighted_rel_state_phase_loss + self.args.negative_task_based_component_weight*negative_weighted_rel_state_phase_loss).mean()
+		self.unweighted_relative_state_phase_aux_loss = (positive_weighted_rel_state_phase_loss + self.args.negative_component_weight*negative_weighted_rel_state_phase_loss).mean()
 		self.relative_state_phase_aux_loss = self.args.relative_state_phase_aux_loss_weight*self.unweighted_relative_state_phase_aux_loss
 
 	def compute_relative_state_reconstruction_loss(self):
@@ -3106,6 +3116,64 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		relabelled_state_sequence[..., -self.args.env_state_size:] = torchified_object_state
 
 		return relabelled_state_sequence	
+
+	def compute_auxillary_z_env_effect_z_loss(self, update_dict):
+
+		##############################
+		# Implement an auxillary loss that forces z_R into similar parts of the space when z_E's are similar. 
+		##############################
+
+		##############################
+		# In more detail: 
+		# 	1) Given a batch of Trajectories {Tau}, and corresponding encodings {z_R} and {z_E}. 
+		# 	2) Consider trajectories {Tau}^i, {Tau}^j. If the environmental effects of these trajectories are similar, 
+		# 		then under a good encoding of these trajectories, z_E^i and z_E^j should be similar, i.e. ||z_E^i - z_E^j||<Delta. 
+		# 	3) In this case, L_aux = max(epsilon, ||z_R^i - z_R^j||^2)	+ min 
+		##############################
+		
+		##############################
+		# 0) Set distance thresholds. 
+		##############################
+
+		z_env_distance_threshold = self.epsilon	
+
+		##############################
+		# 1) Partiition Z Sets.
+		##############################
+		
+		z_robot_set = update_dict['latent_z'][0,:,:int(self.latent_z_dimensionality/2)]
+		z_env_set = update_dict['latent_z'][0,:,int(self.latent_z_dimensionality/2):]
+
+		##############################
+		# 2) Compute Z distances for both Z Sets. 
+		##############################
+		
+		z_robot_distances = torch.cdist(z_robot_set, z_robot_set)[0]
+		z_env_distances = torch.cdist(z_env_set, z_env_set)[0]
+		
+		##############################
+		# 3) Compute Mask. 
+		##############################
+						
+		# Compute a mask, where the entries are 1., when ||z_E^i - z_E^j||<Delta, so apply L_aux = max(epsilon, ||z_R^i - z_R^j||^2). 
+		self.aux_z_env_mask = (z_env_distances <= z_env_distance_threshold).astype(int)
+				
+		##############################
+		# 4) Compute Positive and Negative loss components. 
+		##############################
+						
+		unmasked_aux_z_env_loss_positive_component = torch.clamp(z_robot_distances, min=self.args.positive_z_env_distance_threshold)
+		unmasked_aux_z_env_loss_negative_component = torch.clamp(self.args.negative_z_env_distance_threshold - z_robot_distances, min=0.)
+
+		self.masked_aux_z_env_loss_positive_component = self.aux_z_env_mask*unmasked_aux_z_env_loss_positive_component
+		self.masked_aux_z_env_loss_negative_component = (1.-self.aux_z_env_mask)*unmasked_aux_z_env_loss_negative_component
+		
+		##############################
+		# 5) Weight Positive and Negative loss components. 
+		##############################
+
+		self.unweighted_auxillary_z_env_effect_z_loss = self.masked_aux_z_env_loss_positive_component + self.args.negative_component_weight*self.masked_aux_z_env_loss_negative_component
+		self.auxillary_z_env_effect_z_loss = self.args.auxillary_z_env_effect_z_loss_weight*self.unweighted_auxillary_z_env_effect_z_loss
 
 	def compute_absolute_state_reconstruction_loss(self):
 
