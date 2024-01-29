@@ -3062,7 +3062,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 	def compute_pairwise_z_distance(self, z_set):
 
 		# Compute pairwise distances between z's. 
-		self.pairwise_z_distance = torch.cdist(z_set, z_set)[0]
+		self.pairwise_z_distance = torch.cdist(z_set, z_set)
 		
 		# Clamped z distance loss. 
 		# self.clamped_pairwise_z_distance = torch.clamp(self.pairwise_z_distance - self.args.pairwise_z_distance_threshold, min=0.)
@@ -3070,26 +3070,41 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 
 	def compute_task_based_aux_loss(self, update_dict):
 
-		# Task list. 
+		##########################
+		# 1) Make task array. 
+		##########################
 		task_list = []
 		for k in range(self.args.batch_size):
-			task_list.append(update_dict['data_element'][k]['task-id'])
-		# task_array = np.array(task_list).reshape(self.args.batch_size,1)
+			task_list.append(update_dict['data_element'][k]['task-id'])		
 		torch_task_array = torch.tensor(task_list, dtype=float).reshape(self.args.batch_size,1).to(device)
 		
-		# Compute pairwise task based weights. 
-		# pairwise_task_matrix = (scipy.spatial.distance.cdist(task_array)==0).astype(int).astype(float)
-		pairwise_task_matrix = (torch.cdist(torch_task_array, torch_task_array)==0).int().float()
+		##########################
+		# 2) Compute positive and negative masks. 
+		##########################
 
-		# Positive weighted task loss. 
-		positive_weighted_task_loss = pairwise_task_matrix*self.pairwise_z_distance
+		positive_full_mask = (torch.cdist(torch_task_array, torch_task_array)==0).int().float()
+		negative_full_mask = 1 - positive_full_mask
 
-		# Negative weighted task loss. 
-		# MUST CHECK SIGNAGE OF THIS. 
-		negative_weighted_task_loss = (1.-pairwise_task_matrix)*self.clamped_pairwise_z_distance
+		# Compute upper triangular versions of thes ematrics.
+		positive_triangularized_mask = torch.triu(positive_full_mask, diagonal=1)
+		negative_triangularized_mask = torch.triu(negative_full_mask, diagonal=1)
+
+		##############################
+		# 4) Compute Positive and Negative loss components. 
+		##############################
+
+		unmasked_task_based_aux_loss_positive_component = torch.clamp(self.pairwise_z_distance, min=self.args.positive_z_distance_margin)
+		unmasked_task_based_aux_loss_negative_component = torch.clamp(self.args.negative_z_distance_margin - self.pairwise_z_distance, min=0.)
+
+		self.masked_task_based_aux_loss_positive_component = (positive_triangularized_mask*unmasked_task_based_aux_loss_positive_component).mean()
+		self.masked_task_based_aux_loss_negative_component = (negative_triangularized_mask*unmasked_task_based_aux_loss_negative_component).mean()
+		
+		##############################
+		# 5) Weight Positive and Negative loss components. 
+		##############################
 
 		# Total task_based_aux_loss.
-		self.unweighted_task_based_aux_loss = (positive_weighted_task_loss + self.args.negative_component_weight*negative_weighted_task_loss).mean()
+		self.unweighted_task_based_aux_loss = (self.masked_task_based_aux_loss_positive_component + self.args.negative_component_weight*self.masked_task_based_aux_loss_negative_component).mean()
 		self.task_based_aux_loss = self.args.task_based_aux_loss_weight*self.unweighted_task_based_aux_loss
 
 	def compute_relative_state_phase_aux_loss(self, update_dict):
@@ -3099,8 +3114,8 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 
 		# Compute similarity of rel state vector across batch.
 		self.relative_state_vector_distance = torch.cdist(self.torch_thresholded_beta_vector, self.torch_thresholded_beta_vector)
-		self.relative_state_vector_similarity_matrix = (self.relative_state_vector_distance==0).float()
-	
+		self.relative_state_vector_similarity_matrix = (self.relative_state_vector_distance==0).float()		
+		
 		# Now set positive loss.
 		positive_weighted_rel_state_phase_loss = self.relative_state_vector_similarity_matrix*self.pairwise_z_distance
 
@@ -3199,8 +3214,8 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		# 4) Compute Positive and Negative loss components. 
 		##############################
 						
-		unmasked_aux_z_env_loss_positive_component = torch.clamp(z_robot_distances, min=self.args.positive_z_env_distance_margin)
-		unmasked_aux_z_env_loss_negative_component = torch.clamp(self.args.negative_z_env_distance_margin - z_robot_distances, min=0.)
+		unmasked_aux_z_env_loss_positive_component = torch.clamp(z_robot_distances, min=self.args.positive_z_distance_margin)
+		unmasked_aux_z_env_loss_negative_component = torch.clamp(self.args.negative_z_distance_margin - z_robot_distances, min=0.)
 
 		self.masked_aux_z_env_loss_positive_component = (positive_triangularized_mask*unmasked_aux_z_env_loss_positive_component).mean()
 		self.masked_aux_z_env_loss_negative_component = (negative_triangularized_mask*unmasked_aux_z_env_loss_negative_component).mean()
