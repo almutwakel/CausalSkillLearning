@@ -2433,7 +2433,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		self.decay_epochs = self.args.epsilon_over
 		self.decay_counter = self.decay_epochs*(len(self.dataset)//self.args.batch_size+1)
 		self.variance_decay_counter = self.args.policy_variance_decay_over*(len(self.dataset)//self.args.batch_size+1)
-		self.linear_z_distance_threshold_decay_counter = self.args.z_distance_threshold_decay_over*(len(self.dataset)//self.args.batch_size+1)
+		self.z_distance_threshold_decay_counter = self.args.z_distance_threshold_decay_over*(len(self.dataset)//self.args.batch_size+1)
 		
 		if self.args.kl_schedule:
 			self.kl_increment_epochs = self.args.kl_increment_epochs
@@ -3170,13 +3170,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		##############################
 		
 		##############################
-		# 0) Set distance thresholds. 
-		##############################
-
-		z_env_distance_threshold = self.epsilon	
-
-		##############################
-		# 1) Partiition Z Sets.
+		# 1) Partition Z Sets.
 		##############################
 
 		z_robot_set = update_dict['latent_z'][0,:,:int(self.latent_z_dimensionality/2)]
@@ -3194,7 +3188,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		##############################
 								
 		# Compute a mask, where the entries are 1., when ||z_E^i - z_E^j||<Delta, so apply L_aux = max(epsilon, ||z_R^i - z_R^j||^2). 
-		positive_full_mask = (z_env_distances <= z_env_distance_threshold).int()
+		positive_full_mask = (z_env_distances <= self.auxillary_z_env_effect_distance_threshold).int()
 		negative_full_mask = 1 - positive_full_mask
 
 		# Compute upper triangular versions of thes ematrics.
@@ -3205,17 +3199,17 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		# 4) Compute Positive and Negative loss components. 
 		##############################
 						
-		unmasked_aux_z_env_loss_positive_component = torch.clamp(z_robot_distances, min=self.args.positive_z_env_distance_threshold)
-		unmasked_aux_z_env_loss_negative_component = torch.clamp(self.args.negative_z_env_distance_threshold - z_robot_distances, min=0.)
+		unmasked_aux_z_env_loss_positive_component = torch.clamp(z_robot_distances, min=self.args.positive_z_env_distance_margin)
+		unmasked_aux_z_env_loss_negative_component = torch.clamp(self.args.negative_z_env_distance_margin - z_robot_distances, min=0.)
 
-		masked_aux_z_env_loss_positive_component = (positive_triangularized_mask*unmasked_aux_z_env_loss_positive_component).mean()
-		masked_aux_z_env_loss_negative_component = (negative_triangularized_mask*unmasked_aux_z_env_loss_negative_component).mean()
+		self.masked_aux_z_env_loss_positive_component = (positive_triangularized_mask*unmasked_aux_z_env_loss_positive_component).mean()
+		self.masked_aux_z_env_loss_negative_component = (negative_triangularized_mask*unmasked_aux_z_env_loss_negative_component).mean()
 		
 		##############################
 		# 5) Weight Positive and Negative loss components. 
 		##############################
 
-		self.unweighted_auxillary_z_env_effect_z_loss = masked_aux_z_env_loss_positive_component + self.args.negative_component_weight*masked_aux_z_env_loss_negative_component
+		self.unweighted_auxillary_z_env_effect_z_loss = self.masked_aux_z_env_loss_positive_component + self.args.negative_component_weight*self.masked_aux_z_env_loss_negative_component
 		self.auxillary_z_env_effect_z_loss = self.args.auxillary_z_env_effect_z_loss_weight*self.unweighted_auxillary_z_env_effect_z_loss
 
 	def compute_absolute_state_reconstruction_loss(self):
