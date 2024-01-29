@@ -2618,26 +2618,38 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		
 		# log_dict['Subpolicy Loglikelihood'] = loglikelihood.mean()
 		log_dict = {'Subpolicy Loglikelihood': loglikelihood.mean(), 'Total Loss': self.total_loss.mean(), 'Encoder KL': self.encoder_KL.mean(), 'KL Weight': self.kl_weight}
+
 		if self.args.relative_state_reconstruction_loss_weight>0.:
 			log_dict['Unweighted Relative State Recon Loss'] = self.unweighted_relative_state_reconstruction_loss
 			log_dict['Relative State Recon Loss'] = self.relative_state_reconstruction_loss
 			log_dict['Auxillary Loss'] = self.aux_loss
+
 		if self.args.task_based_aux_loss_weight>0.:
 			log_dict['Unweighted Task Based Auxillary Loss'] = self.unweighted_task_based_aux_loss
 			log_dict['Task Based Auxillary Loss'] = self.task_based_aux_loss
 			log_dict['Auxillary Loss'] = self.aux_loss
+
 		if self.args.relative_state_phase_aux_loss_weight>0.:
 			log_dict['Unweighted Relative Phase Auxillary Loss'] = self.unweighted_relative_state_phase_aux_loss
 			log_dict['Relative Phase Auxillary Loss'] = self.relative_state_phase_aux_loss
 			log_dict['Auxillary Loss'] = self.aux_loss
+
 		if self.args.cummulative_computed_state_reconstruction_loss_weight>0.:
 			log_dict['Unweighted Cummmulative Computed State Reconstruction Loss'] = self.unweighted_cummulative_computed_state_reconstruction_loss
 			log_dict['Cummulative Computed State Reconstruction Loss'] = self.cummulative_computed_state_reconstruction_loss
+
 		if self.args.teacher_forced_state_reconstruction_loss_weight>0.:
 			log_dict['Unweighted Teacher Forced State Reconstruction Loss'] = self.unweighted_teacher_forced_state_reconstruction_loss
 			log_dict['Teacher Forced State Reconstruction Loss'] = self.teacher_forced_state_reconstruction_loss
+
 		if self.args.cummulative_computed_state_reconstruction_loss_weight>0. or self.args.teacher_forced_state_reconstruction_loss_weight>0.:
 			log_dict['State Reconstruction Loss'] = self.absolute_state_reconstruction_loss
+
+		if self.args.auxillary_z_env_effect_z_loss_weight>0.:
+			log_dict['Auxillary Z_Env Loss Positive Component'] = self.masked_aux_z_env_loss_positive_component
+			log_dict['Auxillary Z_Env Loss Negative Component'] = self.masked_aux_z_env_loss_negative_component
+			log_dict['Unweighted Auxillary Z_Env Loss'] = self.unweighted_auxillary_z_env_effect_z_loss
+			log_dict['Auxillary Z_Env Loss'] = self.auxillary_z_env_effect_z_loss
 
 		if counter%self.args.display_freq==0:
 			
@@ -2947,9 +2959,11 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		# Initialize losses.
 		self.unweighted_relative_state_reconstruction_loss = 0.
 		self.relative_state_reconstruction_loss = 0.
+
 		# 
 		self.unweighted_relative_state_phase_aux_loss = 0.
 		self.relative_state_phase_aux_loss = 0.
+		
 		# 
 		self.unweighted_task_based_aux_loss = 0.
 		self.task_based_aux_loss = 0.
@@ -2960,9 +2974,16 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		self.unweighted_cummmulative_computed_state_reconstruction_loss = 0.
 		self.cummulative_computed_state_reconstruction_loss = 0.
 
+		# 
+		self.unweighted_auxillary_z_env_effect_z_loss = 0.
+		self.auxillary_z_env_effect_z_loss = 0. 
+
 	def compute_auxillary_losses(self, update_dict):
 
 		self.initialize_aux_losses()
+
+		# print("Embed in aux loss computation")
+		# embed()
 
 		# Set the relative state reconstruction loss.
 		if self.args.relative_state_reconstruction_loss_weight>0.:
@@ -3140,7 +3161,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		##############################
 		# 1) Partiition Z Sets.
 		##############################
-		
+
 		z_robot_set = update_dict['latent_z'][0,:,:int(self.latent_z_dimensionality/2)]
 		z_env_set = update_dict['latent_z'][0,:,int(self.latent_z_dimensionality/2):]
 
@@ -3150,14 +3171,18 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		
 		z_robot_distances = torch.cdist(z_robot_set, z_robot_set)[0]
 		z_env_distances = torch.cdist(z_env_set, z_env_set)[0]
-		
+				
 		##############################
 		# 3) Compute Mask. 
 		##############################
 						
 		# Compute a mask, where the entries are 1., when ||z_E^i - z_E^j||<Delta, so apply L_aux = max(epsilon, ||z_R^i - z_R^j||^2). 
-		self.aux_z_env_mask = (z_env_distances <= z_env_distance_threshold).astype(int)
+		self.aux_z_env_mask = (z_env_distances <= z_env_distance_threshold).int()
 				
+		print("Embed in Aux Z Env Loss")
+		embed()
+
+
 		##############################
 		# 4) Compute Positive and Negative loss components. 
 		##############################
@@ -3165,8 +3190,8 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		unmasked_aux_z_env_loss_positive_component = torch.clamp(z_robot_distances, min=self.args.positive_z_env_distance_threshold)
 		unmasked_aux_z_env_loss_negative_component = torch.clamp(self.args.negative_z_env_distance_threshold - z_robot_distances, min=0.)
 
-		self.masked_aux_z_env_loss_positive_component = self.aux_z_env_mask*unmasked_aux_z_env_loss_positive_component
-		self.masked_aux_z_env_loss_negative_component = (1.-self.aux_z_env_mask)*unmasked_aux_z_env_loss_negative_component
+		self.masked_aux_z_env_loss_positive_component = (self.aux_z_env_mask*unmasked_aux_z_env_loss_positive_component).mean()
+		self.masked_aux_z_env_loss_negative_component = ((1.-self.aux_z_env_mask)*unmasked_aux_z_env_loss_negative_component).mean()
 		
 		##############################
 		# 5) Weight Positive and Negative loss components. 

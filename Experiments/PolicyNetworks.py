@@ -2773,7 +2773,6 @@ class ContinuousSequentialFactoredEncoderNetwork(ContinuousFactoredEncoderNetwor
 
 		return concatenated_zs, concatenated_bs
 
-
 class ContinuousSoftEncoderNetwork(ContinuousEncoderNetwork):
 
 	def __init__(self, input_size, hidden_size, output_size, args, batch_size=1):

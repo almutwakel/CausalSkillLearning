@@ -451,10 +451,10 @@ def parse_arguments():
 	parser.add_argument('--pairwise_z_distance_threshold', dest='pairwise_z_distance_threshold', type=float, default=2., help='Minimum distance to push apart different parts of latent space that are semantically different.')
 	
 	# Auxillary Z_env effect loss. 
-	parser.add_argument('--positive_z_env_distance_threshold', dest='positive_z_env_distance_threshold', type=float, default=0., help='Positive Component Distance Threshold')
-	parser.add_argument('--negative_z_env_distance_threshold', dest='negative_z_env_distance_threshold', type=float, default=0., help='Negative Component Distance Threshold')
+	parser.add_argument('--positive_z_env_distance_threshold', dest='positive_z_env_distance_threshold', type=float, default=1., help='Positive Component Distance Threshold')
+	parser.add_argument('--negative_z_env_distance_threshold', dest='negative_z_env_distance_threshold', type=float, default=1., help='Negative Component Distance Threshold')
 	parser.add_argument('--negative_component_weight', dest='negative_component_weight', type=float, default=1., help='Weight to place on the negative component of the task based aux loss.')# 
-	parser.add_argument('--auxillary_z_env_effect_z_loss_weight', dest='auxillary_z_env_effect_z_loss_weight', type=float, default=1., help='Weight to place on aux z_env effect loss. ')
+	parser.add_argument('--auxillary_z_env_effect_z_loss_weight', dest='auxillary_z_env_effect_z_loss_weight', type=float, default=0., help='Weight to place on aux z_env effect loss. ')
 
 	# absolute state reconstruction
 	parser.add_argument('--cummulative_computed_state_reconstruction_loss_weight', dest='cummulative_computed_state_reconstruction_loss_weight', type=float, default=0., \
