@@ -3169,20 +3169,21 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		# 2) Compute Z distances for both Z Sets. 
 		##############################
 		
-		z_robot_distances = torch.cdist(z_robot_set, z_robot_set)[0]
-		z_env_distances = torch.cdist(z_env_set, z_env_set)[0]
+		z_robot_distances = torch.cdist(z_robot_set, z_robot_set)
+		z_env_distances = torch.cdist(z_env_set, z_env_set)
 				
 		##############################
-		# 3) Compute Mask. 
+		# 3) Compute Masks. 
 		##############################
-						
+								
 		# Compute a mask, where the entries are 1., when ||z_E^i - z_E^j||<Delta, so apply L_aux = max(epsilon, ||z_R^i - z_R^j||^2). 
-		self.aux_z_env_mask = (z_env_distances <= z_env_distance_threshold).int()
-				
-		print("Embed in Aux Z Env Loss")
-		embed()
+		positive_full_mask = (z_env_distances <= z_env_distance_threshold).int()
+		negative_full_mask = 1 - positive_full_mask
 
-
+		# Compute upper triangular versions of thes ematrics.
+		positive_triangularized_mask = torch.triu(positive_full_mask, diagonal=1)
+		negative_triangularized_mask = torch.triu(negative_full_mask, diagonal=1)
+		
 		##############################
 		# 4) Compute Positive and Negative loss components. 
 		##############################
@@ -3190,14 +3191,14 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		unmasked_aux_z_env_loss_positive_component = torch.clamp(z_robot_distances, min=self.args.positive_z_env_distance_threshold)
 		unmasked_aux_z_env_loss_negative_component = torch.clamp(self.args.negative_z_env_distance_threshold - z_robot_distances, min=0.)
 
-		self.masked_aux_z_env_loss_positive_component = (self.aux_z_env_mask*unmasked_aux_z_env_loss_positive_component).mean()
-		self.masked_aux_z_env_loss_negative_component = ((1.-self.aux_z_env_mask)*unmasked_aux_z_env_loss_negative_component).mean()
+		masked_aux_z_env_loss_positive_component = (positive_triangularized_mask*unmasked_aux_z_env_loss_positive_component).mean()
+		masked_aux_z_env_loss_negative_component = (negative_triangularized_mask*unmasked_aux_z_env_loss_negative_component).mean()
 		
 		##############################
 		# 5) Weight Positive and Negative loss components. 
 		##############################
 
-		self.unweighted_auxillary_z_env_effect_z_loss = self.masked_aux_z_env_loss_positive_component + self.args.negative_component_weight*self.masked_aux_z_env_loss_negative_component
+		self.unweighted_auxillary_z_env_effect_z_loss = masked_aux_z_env_loss_positive_component + self.args.negative_component_weight*masked_aux_z_env_loss_negative_component
 		self.auxillary_z_env_effect_z_loss = self.args.auxillary_z_env_effect_z_loss_weight*self.unweighted_auxillary_z_env_effect_z_loss
 
 	def compute_absolute_state_reconstruction_loss(self):
