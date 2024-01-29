@@ -2433,6 +2433,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		self.decay_epochs = self.args.epsilon_over
 		self.decay_counter = self.decay_epochs*(len(self.dataset)//self.args.batch_size+1)
 		self.variance_decay_counter = self.args.policy_variance_decay_over*(len(self.dataset)//self.args.batch_size+1)
+		self.linear_z_distance_threshold_decay_counter = self.args.z_distance_threshold_decay_over*(len(self.dataset)//self.args.batch_size+1)
 		
 		if self.args.kl_schedule:
 			self.kl_increment_epochs = self.args.kl_increment_epochs
@@ -2449,6 +2450,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		self.decay_rate = (self.initial_epsilon-self.final_epsilon)/(self.decay_counter)	
 		self.linear_variance_decay_rate = (self.args.initial_policy_variance - self.args.final_policy_variance)/(self.variance_decay_counter)
 		self.quadratic_variance_decay_rate = (self.args.initial_policy_variance - self.args.final_policy_variance)/(self.variance_decay_counter**2)
+		self.linear_z_distance_threshold_decay_rate = (self.args.initial_z_distance_threshold - self.args.final_z_distance_threshold)/(self.z_distance_threshold_decay_counter)
 
 	def create_networks(self):
 		
@@ -2526,8 +2528,11 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 
 			# Annealing epsilon and policy variance.
 			if counter<self.decay_counter:
+
+				# Epsilon
 				self.epsilon = self.initial_epsilon-self.decay_rate*counter
 				
+				# Variance Annealing. 
 				if self.args.variance_mode in ['Constant']:
 					self.policy_variance_value = self.args.variance_value
 				elif self.args.variance_mode in ['LinearAnnealed']:
@@ -2535,13 +2540,24 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 				elif self.args.variance_mode in ['QuadraticAnnealed']:
 					self.policy_variance_value = self.args.final_policy_variance + self.quadratic_variance_decay_rate*((counter-self.variance_decay_counter)**2)				
 
+				# Aux Z_Env effect distance threshold 
+				self.auxillary_z_env_effect_distance_threshold = self.args.initial_z_distance_threshold - self.linear_z_distance_threshold_decay_rate*counter
+
 			else:
+
+				# Epsilon
 				self.epsilon = self.final_epsilon
+
+				# Variance Annealing. 
 				if self.args.variance_mode in ['Constant']:
 					self.policy_variance_value = self.args.variance_value
 				elif self.args.variance_mode in ['LinearAnnealed', 'QuadraticAnnealed']:
 					self.policy_variance_value = self.args.final_policy_variance
+				
+				# Aux Z_Env effect distance threshold 
+				self.auxillary_z_env_effect_distance_threshold = self.args.final_z_distance_threshold
 		else:
+
 			self.epsilon = self.final_epsilon
 			# self.policy_variance_value = self.args.final_policy_variance
 			
@@ -2650,6 +2666,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			log_dict['Auxillary Z_Env Loss Negative Component'] = self.masked_aux_z_env_loss_negative_component
 			log_dict['Unweighted Auxillary Z_Env Loss'] = self.unweighted_auxillary_z_env_effect_z_loss
 			log_dict['Auxillary Z_Env Loss'] = self.auxillary_z_env_effect_z_loss
+			log_dict['Z Env Distance Threshold'] = self.auxillary_z_env_effect_distance_threshold
 
 		if counter%self.args.display_freq==0:
 			
