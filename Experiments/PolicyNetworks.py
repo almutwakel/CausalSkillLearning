@@ -2426,9 +2426,9 @@ class ContinuousEncoderNetwork(PolicyNetwork_BaseClass):
 		self.variance_activation_bias = 0.
 		self.variance_factor = self.args.variance_factor
 
-		# IF we're using positional encodings:
-		if self.args.positional_encoding:
-			self.positional_encoding_layer = PositionalEncoding(self.size_dict['input_size'])
+		# # IF we're using positional encodings:
+		# if self.args.positional_encoding:
+		# 	self.positional_encoding_layer = PositionalEncoding(self.size_dict['input_size'])
 
 	def define_networks(self, input_size, output_size):
 		
@@ -2445,6 +2445,9 @@ class ContinuousEncoderNetwork(PolicyNetwork_BaseClass):
 
 		self.network_dict = torch.nn.ModuleDict()
 		self.network_dict['lstm'], self.network_dict['mean_output_layer'], self.network_dict['variances_output_layer'] = self.define_networks(self.size_dict['input_size'], self.size_dict['output_size'])
+
+		if self.args.positional_encoding:
+			self.network_dict['positional_encoding_layer'] = PositionalEncoding(self.size_dict['input_size'])
 
 	def forward(self, input, epsilon=0.0001, network_dict=None, size_dict=None, z_sample_to_evaluate=None, artificial_batch_size=None, greedy=False):
 
@@ -2469,7 +2472,8 @@ class ContinuousEncoderNetwork(PolicyNetwork_BaseClass):
 
 		if self.args.positional_encoding:
 			# Encode add positional encoding to the input. 
-			new_input = self.positional_encoding_layer(format_input)
+			# new_input = self.positional_encoding_layer(format_input)
+			new_input = network_dict['positional_encoding_layer'](format_input)
 		else:
 			new_input = format_input	
 
@@ -2574,10 +2578,12 @@ class ContinuousFactoredEncoderNetwork(ContinuousEncoderNetwork):
 		# Define networks for robot stream.
 		self.robot_network_dict = torch.nn.ModuleDict()
 		self.robot_network_dict['lstm'], self.robot_network_dict['mean_output_layer'], self.robot_network_dict['variances_output_layer'] = self.define_networks(self.robot_size_dict['input_size'], self.robot_size_dict['output_size'])
+		self.robot_network_dict['positional_encoding_layer'] = PositionalEncoding(self.robot_size_dict['input_size'])
 
 		# Define networks for environment stream.
 		self.env_network_dict = torch.nn.ModuleDict()
 		self.env_network_dict['lstm'], self.env_network_dict['mean_output_layer'], self.env_network_dict['variances_output_layer'] = self.define_networks(self.env_size_dict['input_size'], self.env_size_dict['output_size'])
+		self.env_network_dict['positional_encoding_layer'] = PositionalEncoding(self.env_size_dict['input_size'])
 
 	def split_stream_inputs(self, input):
 

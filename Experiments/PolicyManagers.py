@@ -1355,7 +1355,10 @@ class PolicyManager_BaseClass():
 
 		# Special parameters used for NDAXv2 dataset
 		# zoom_factor = 0.6
-		zoom_factor = 0.5
+		# zoom_factor = 0.5
+
+		# Visualizing more of the images by making them smaller..
+		zoom_factor = 0.3
 
 		# Set this parameter to make sure we don't drop frames.
 		matplotlib.rcParams['animation.embed_limit'] = 2**128
@@ -3115,7 +3118,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		# Compute similarity of rel state vector across batch.
 		self.relative_state_vector_distance = torch.cdist(self.torch_thresholded_beta_vector, self.torch_thresholded_beta_vector)
 		self.relative_state_vector_similarity_matrix = (self.relative_state_vector_distance==0).float()		
-		
+
 		# Now set positive loss.
 		positive_weighted_rel_state_phase_loss = self.relative_state_vector_similarity_matrix*self.pairwise_z_distance
 
