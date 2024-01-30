@@ -2671,6 +2671,13 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			log_dict['Auxillary Z_Env Loss'] = self.auxillary_z_env_effect_z_loss
 			log_dict['Z Env Distance Threshold'] = self.auxillary_z_env_effect_distance_threshold
 
+		if self.args.auxillary_env_effect_traj_loss_weight>0.:
+			log_dict['Auxillary Env Effect Traj Loss Positive Component'] = self.masked_aux_env_effect_traj_loss_positive_component
+			log_dict['Auxillary Env Effect Traj Loss Negative Component'] = self.masked_aux_env_effect_traj_loss_negative_component
+			log_dict['Unweighted Auxillary Env Effect Traj Loss'] = self.unweighted_auxillary_env_effect_traj_loss
+			log_dict['Auxillary Env Effect Traj Loss'] = self.auxillary_env_effect_traj_loss
+			log_dict['Env Effect Traj Distance Threshold'] = self.auxillary_z_env_effect_distance_threshold
+
 		if counter%self.args.display_freq==0:
 			
 			if self.args.batch_size>1:
@@ -2998,6 +3005,10 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		self.unweighted_auxillary_z_env_effect_z_loss = 0.
 		self.auxillary_z_env_effect_z_loss = 0. 
 
+		# 
+		self.unweighted_auxillary_env_effect_traj_loss = 0.
+		self.auxillary_env_effect_traj_loss = 0.
+
 	def compute_auxillary_losses(self, update_dict):
 
 		self.initialize_aux_losses()
@@ -3015,6 +3026,10 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		# Computing z_env based auxillary loss based only on Z_ENV component. 
 		if self.args.auxillary_z_env_effect_z_loss_weight>0. :
 			self.compute_auxillary_z_env_effect_z_loss(update_dict=update_dict)
+
+		# Compute env effect trajectory based auxillary loss. 
+		if self.args.auxillary_env_effect_traj_loss_weight>0. :
+			self.compute_auxillary_env_effect_traj_loss(update_dict=update_dict)
 
 		# Task based aux loss weight. 
 		if self.args.task_based_aux_loss_weight>0.:
@@ -3173,6 +3188,66 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 
 		return relabelled_state_sequence	
 
+	def compute_auxillary_env_effect_traj_loss(self, update_dict):
+
+		##############################
+		# Implement an auxillary loss that forces z_J into similar parts of the space when Traj_E's are similar. 
+		##############################
+
+		##############################
+		# In more detail: 
+		# 	1) Given a batch of Trajectories {Tau}, and corresponding encodings {z_R} and {z_E}. 
+		# 	2) Consider trajectories {Tau}^i, {Tau}^j. If the environmental effects of these trajectories are similar, 
+		# 		then under a good encoding of these trajectories, z_E^i and z_E^j should be similar, i.e. ||z_E^i - z_E^j||<Delta. 
+		# 	3) In this case, L_aux = max(epsilon, ||z_J^i - z_J^j||^2)	+ min 
+		##############################		
+
+		##############################
+		# 2) Compute distances for both Z Set and Trajectory Segments
+		##############################
+		
+		# Compute Z distances. 
+		z_distances = torch.cdist(z_set, z_set)
+
+		# Torchify traj. 
+		torch_traj = torch.from_numpy(update_dict['sample_traj']).cuda()
+		
+		# Normalize trajectory w.r.t. initial state. 
+		normalized_torch_traj = torch_traj - torch_traj[0]
+
+		# Compute trajectory distances.
+		trajectory_distances = torch.cdist(normalized_torch_traj, normalized_torch_traj).mean(axis=0)		
+				
+		##############################
+		# 3) Compute Masks. 
+		##############################	
+
+		# Compute a mask, where the entries are 1., when ||z_E^i - z_E^j||<Delta, so apply L_aux = max(epsilon, ||z_R^i - z_R^j||^2). 
+		positive_full_mask = (trajectory_distances <= self.auxillary_z_env_effect_distance_threshold).int()
+		negative_full_mask = 1 - positive_full_mask
+
+		# Compute upper triangular versions of thes ematrics.
+		positive_triangularized_mask = torch.triu(positive_full_mask, diagonal=1)
+		negative_triangularized_mask = torch.triu(negative_full_mask, diagonal=1)
+		
+		##############################
+		# 4) Compute Positive and Negative loss components. 
+		##############################
+						
+		unmasked_aux_z_env_loss_positive_component = torch.clamp(z_distances, min=self.args.positive_z_distance_margin)
+		unmasked_aux_z_env_loss_negative_component = torch.clamp(self.args.negative_z_distance_margin - z_distances, min=0.)
+
+		self.masked_aux_env_effect_traj_loss_positive_component = (positive_triangularized_mask*unmasked_aux_z_env_loss_positive_component).mean()
+		self.masked_aux_env_effect_traj_loss_negative_component = (negative_triangularized_mask*unmasked_aux_z_env_loss_negative_component).mean()
+		
+		##############################
+		# 5) Weight Positive and Negative loss components. 
+		##############################
+
+		self.unweighted_auxillary_env_effect_traj_loss = self.masked_aux_env_effect_traj_loss_positive_component + self.args.negative_component_weight*self.masked_aux_env_effect_traj_loss_negative_component
+		self.auxillary_env_effect_traj_loss = self.args.auxillary_env_effect_traj_loss_weight*self.unweighted_auxillary_env_effect_traj_loss
+
+
 	def compute_auxillary_z_env_effect_z_loss(self, update_dict):
 
 		##############################
@@ -3203,8 +3278,11 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 				
 		##############################
 		# 3) Compute Masks. 
-		##############################
-								
+		##############################	
+
+		# print("Embedding in z env aux loss computation")
+		# embed()
+
 		# Compute a mask, where the entries are 1., when ||z_E^i - z_E^j||<Delta, so apply L_aux = max(epsilon, ||z_R^i - z_R^j||^2). 
 		positive_full_mask = (z_env_distances <= self.auxillary_z_env_effect_distance_threshold).int()
 		negative_full_mask = 1 - positive_full_mask

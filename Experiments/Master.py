@@ -461,6 +461,7 @@ def parse_arguments():
 	parser.add_argument('--z_distance_threshold_decay_over',dest='z_distance_threshold_decay_over',type=int,default=100000)
 	parser.add_argument('--negative_component_weight', dest='negative_component_weight', type=float, default=1., help='Weight to place on the negative component of the task based aux loss.')# 
 	parser.add_argument('--auxillary_z_env_effect_z_loss_weight', dest='auxillary_z_env_effect_z_loss_weight', type=float, default=0., help='Weight to place on aux z_env effect loss. ')
+	parser.add_argument('--auxillary_env_effect_traj_loss_weight', dest='auxillary_env_effect_traj_loss_weight', type=float, default=0., help='Weight to place on aux env effect traj loss. ')
 
 	# absolute state reconstruction
 	parser.add_argument('--cummulative_computed_state_reconstruction_loss_weight', dest='cummulative_computed_state_reconstruction_loss_weight', type=float, default=0., \
