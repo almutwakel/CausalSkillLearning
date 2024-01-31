@@ -2570,20 +2570,32 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		# print("embed in set epoch")
 		# embed()
 
-		# Set KL weight. 
-		self.set_kl_weight(counter)		
+		# Set auxillary loss weight and KL weight. 
+		self.set_aux_loss_weights(counter)		
 
-	def set_kl_weight(self, counter):
+	def set_aux_loss_weights(self, counter):
 		
+		# We're also going to use this to schedule the auxillary loss. 
+
 		# Monotonic KL increase.
 		if self.args.kl_schedule=='Monotonic':
+
 			if counter>self.kl_begin_increment_counter:
 				if (counter-self.kl_begin_increment_counter)<self.kl_increment_counter:
 					self.kl_weight = self.args.initial_kl_weight + self.kl_increment_rate*counter
 				else:
 					self.kl_weight = self.args.final_kl_weight
+				
+				self.aux_env_effect_z_loss_weight = self.args.auxillary_z_env_effect_z_loss_weight
+				self.aux_env_effect_traj_loss_weight = self.args.auxillary_env_effect_traj_loss_weight
+				self.aux_task_based_loss_weight = self.args.task_based_aux_loss_weight
 			else:
 				self.kl_weight = self.args.initial_kl_weight
+
+				# If we are still in the initial phase of training, don't use the aux_zenv_loss_weight or the task based aux loss.
+				self.aux_env_effect_traj_loss_weight = 0.
+				self.aux_env_effect_z_loss_weight = 0.
+				self.aux_task_based_loss_weight = 0.				
 
 		# Cyclic KL.
 		elif self.args.kl_schedule=='Cyclic':
@@ -2611,7 +2623,9 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		# No Schedule. 
 		else:
 			self.kl_weight = self.args.kl_weight
-
+			self.aux_env_effect_z_loss_weight = self.args.auxillary_z_env_effect_z_loss_weight
+			self.aux_env_effect_traj_loss_weight = self.args.auxillary_env_effect_traj_loss_weight
+			self.aux_task_based_loss_weight = self.args.task_based_aux_loss_weight
 		# Adding branch for cyclic KL weight.		
 
 	def visualize_trajectory(self, traj, no_axes=False):
@@ -3124,7 +3138,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 
 		# Total task_based_aux_loss.
 		self.unweighted_task_based_aux_loss = (self.masked_task_based_aux_loss_positive_component + self.args.negative_component_weight*self.masked_task_based_aux_loss_negative_component).mean()
-		self.task_based_aux_loss = self.args.task_based_aux_loss_weight*self.unweighted_task_based_aux_loss
+		self.task_based_aux_loss = self.aux_task_based_loss_weight*self.unweighted_task_based_aux_loss
 
 	def compute_relative_state_phase_aux_loss(self, update_dict):
 
@@ -3215,13 +3229,13 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		# Select the position of the first object for the trajectory based loss. 
 		##############################
 
-		torch_traj = torch.from_numpy(update_dict['sample_traj'][..., self.args.robot_state_size:self.args.robot_state_size+3]).cuda()
+		object_torch_traj = torch.from_numpy(update_dict['sample_traj'][..., self.args.robot_state_size:self.args.robot_state_size+3]).cuda()
 		
 		# Normalize trajectory w.r.t. initial state. 
-		normalized_torch_traj = torch_traj - torch_traj[0]
+		normalized_object_torch_traj = object_torch_traj - object_torch_traj[0]
 
 		# Compute trajectory distances.
-		trajectory_distances = torch.cdist(normalized_torch_traj, normalized_torch_traj).mean(axis=0)						
+		trajectory_distances = torch.cdist(normalized_object_torch_traj, normalized_object_torch_traj).mean(axis=0)						
 
 		##############################
 		# 3) Compute Masks. 
@@ -3250,7 +3264,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		##############################
 
 		self.unweighted_auxillary_env_effect_traj_loss = self.masked_aux_env_effect_traj_loss_positive_component + self.args.negative_component_weight*self.masked_aux_env_effect_traj_loss_negative_component
-		self.auxillary_env_effect_traj_loss = self.args.auxillary_env_effect_traj_loss_weight*self.unweighted_auxillary_env_effect_traj_loss
+		self.auxillary_env_effect_traj_loss = self.aux_env_effect_traj_loss_weight*self.unweighted_auxillary_env_effect_traj_loss
 
 	def compute_auxillary_z_env_effect_z_loss(self, update_dict):
 
@@ -3310,7 +3324,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		##############################
 
 		self.unweighted_auxillary_z_env_effect_z_loss = self.masked_aux_z_env_loss_positive_component + self.args.negative_component_weight*self.masked_aux_z_env_loss_negative_component
-		self.auxillary_z_env_effect_z_loss = self.args.auxillary_z_env_effect_z_loss_weight*self.unweighted_auxillary_z_env_effect_z_loss
+		self.auxillary_z_env_effect_z_loss = self.aux_env_effect_z_loss_weight*self.unweighted_auxillary_z_env_effect_z_loss
 
 	def compute_absolute_state_reconstruction_loss(self):
 
