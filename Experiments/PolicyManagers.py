@@ -3045,7 +3045,8 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 
 		# Weighting the auxillary loss...
 		self.aux_loss = self.relative_state_reconstruction_loss + self.relative_state_phase_aux_loss \
-			  + self.task_based_aux_loss + self.absolute_state_reconstruction_loss + self.auxillary_z_env_effect_z_loss
+			  + self.task_based_aux_loss + self.absolute_state_reconstruction_loss + self.auxillary_z_env_effect_z_loss \
+			  + self.compute_auxillary_env_effect_traj_loss
 
 	def compute_relative_state_class_vectors(self, update_dict):
 
@@ -3207,17 +3208,21 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		##############################
 		
 		# Compute Z distances. 
-		z_distances = torch.cdist(z_set, z_set)
+		z_distances = torch.cdist(update_dict['latent_z'], update_dict['latent_z'])
 
-		# Torchify traj. 
-		torch_traj = torch.from_numpy(update_dict['sample_traj']).cuda()
+	
+		##############################
+		# Select the position of the first object for the trajectory based loss. 
+		##############################
+
+		torch_traj = torch.from_numpy(update_dict['sample_traj'][..., self.args.robot_state_size:self.args.robot_state_size+3]).cuda()
 		
 		# Normalize trajectory w.r.t. initial state. 
 		normalized_torch_traj = torch_traj - torch_traj[0]
 
 		# Compute trajectory distances.
-		trajectory_distances = torch.cdist(normalized_torch_traj, normalized_torch_traj).mean(axis=0)		
-				
+		trajectory_distances = torch.cdist(normalized_torch_traj, normalized_torch_traj).mean(axis=0)						
+
 		##############################
 		# 3) Compute Masks. 
 		##############################	
@@ -3246,7 +3251,6 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 
 		self.unweighted_auxillary_env_effect_traj_loss = self.masked_aux_env_effect_traj_loss_positive_component + self.args.negative_component_weight*self.masked_aux_env_effect_traj_loss_negative_component
 		self.auxillary_env_effect_traj_loss = self.args.auxillary_env_effect_traj_loss_weight*self.unweighted_auxillary_env_effect_traj_loss
-
 
 	def compute_auxillary_z_env_effect_z_loss(self, update_dict):
 
