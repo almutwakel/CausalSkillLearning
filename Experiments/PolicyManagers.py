@@ -3046,7 +3046,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		# Weighting the auxillary loss...
 		self.aux_loss = self.relative_state_reconstruction_loss + self.relative_state_phase_aux_loss \
 			  + self.task_based_aux_loss + self.absolute_state_reconstruction_loss + self.auxillary_z_env_effect_z_loss \
-			  + self.compute_auxillary_env_effect_traj_loss
+				+ self.auxillary_env_effect_traj_loss
 
 	def compute_relative_state_class_vectors(self, update_dict):
 
