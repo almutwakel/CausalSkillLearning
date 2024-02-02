@@ -2685,7 +2685,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			log_dict['Auxillary Z_Env Loss'] = self.auxillary_z_env_effect_z_loss
 			log_dict['Z Env Distance Threshold'] = self.auxillary_z_env_effect_distance_threshold
 
-		if self.args.auxillary_env_effect_traj_loss_weight>0.:
+		if self.args.auxillary_env_effect_traj_loss_weight>0. or self.args.auxillary_z_env_effect_z_loss_weight>0.:
 			log_dict['Auxillary Env Effect Traj Loss Positive Component'] = self.masked_aux_env_effect_traj_loss_positive_component
 			log_dict['Auxillary Env Effect Traj Loss Negative Component'] = self.masked_aux_env_effect_traj_loss_negative_component
 			log_dict['Unweighted Auxillary Env Effect Traj Loss'] = self.unweighted_auxillary_env_effect_traj_loss
@@ -3042,7 +3042,8 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			self.compute_auxillary_z_env_effect_z_loss(update_dict=update_dict)
 
 		# Compute env effect trajectory based auxillary loss. 
-		if self.args.auxillary_env_effect_traj_loss_weight>0. :
+		# Compute this as evaluation metric if we're using the zenv loss..
+		if self.args.auxillary_env_effect_traj_loss_weight>0. or self.args.auxillary_z_env_effect_z_loss_weight>0.:
 			self.compute_auxillary_env_effect_traj_loss(update_dict=update_dict)
 
 		# Task based aux loss weight. 
