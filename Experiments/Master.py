@@ -462,6 +462,7 @@ def parse_arguments():
 	parser.add_argument('--negative_component_weight', dest='negative_component_weight', type=float, default=1., help='Weight to place on the negative component of the task based aux loss.')# 
 	parser.add_argument('--auxillary_z_env_effect_z_loss_weight', dest='auxillary_z_env_effect_z_loss_weight', type=float, default=0., help='Weight to place on aux z_env effect loss. ')
 	parser.add_argument('--auxillary_env_effect_traj_loss_weight', dest='auxillary_env_effect_traj_loss_weight', type=float, default=0., help='Weight to place on aux env effect traj loss. ')
+	parser.add_argument('--metric_distance_space', dest='metric_distance_space', type=str, default='z_R', choices=['z_R', 'z_J', 'rel_zR_zE'], help='The stream over which metric losses in Z space are computed. Can be just robot, or joint zs.')	
 
 	# absolute state reconstruction
 	parser.add_argument('--cummulative_computed_state_reconstruction_loss_weight', dest='cummulative_computed_state_reconstruction_loss_weight', type=float, default=0., \

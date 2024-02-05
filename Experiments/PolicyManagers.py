@@ -1312,13 +1312,17 @@ class PolicyManager_BaseClass():
 		print("Time taken to write this embedding in HTML: ",t2-t1)
 		# print("Time taken to save the animation object: ",t3-t2)
 
-	def get_robot_embedding(self, return_tsne_object=False, perplexity=None):
+	def get_robot_embedding(self, return_tsne_object=False, perplexity=None, latent_z=None):
 
 		# # Mean and variance normalize z.
 		# mean = self.latent_z_set.mean(axis=0)
 		# std = self.latent_z_set.std(axis=0)
 		# normed_z = (self.latent_z_set-mean)/std
-		normed_z = self.latent_z_set
+
+		if latent_z is None:
+			normed_z = self.latent_z_set
+		else:
+			normed_z = latent_z
 
 		if perplexity is None:
 			perplexity = self.args.perplexity
@@ -2698,9 +2702,9 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 				# Just select one trajectory from batch.
 				sample_traj = sample_traj[:,0]
 
-			############
+			###################################
 			# Plotting embedding in tensorboard. 
-			############
+			###################################
 
 			# Get latent_z set. 
 			self.get_trajectory_and_latent_sets(get_visuals=True)
@@ -2714,6 +2718,16 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			self.embedded_z_dict['perp10'] = self.get_robot_embedding(perplexity=10)
 			self.embedded_z_dict['perp30'] = self.get_robot_embedding(perplexity=30)
 
+			###################################
+			# Embedding different latent spaces..
+			###################################
+
+			# print("Embedding in latent z plots")
+			# embed()
+
+			self.embedded_z_dict['perp30_zE'] = self.get_robot_embedding(perplexity=30, latent_z=self.latent_z_set[:,int(self.latent_z_dimensionality/2):])
+			self.embedded_z_dict['perp30_zR'] = self.get_robot_embedding(perplexity=30, latent_z=self.latent_z_set[:,:int(self.latent_z_dimensionality/2)])
+
 			# Save embedded z's and trajectory and latent sets.
 			self.save_latent_sets(stat_dictionary)
 
@@ -2723,11 +2737,20 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			image_perp10 = self.plot_embedding(self.embedded_z_dict['perp10'], title="Z Space {0} Perp 10".format(statistics_line))
 			image_perp30 = self.plot_embedding(self.embedded_z_dict['perp30'], title="Z Space {0} Perp 30".format(statistics_line))
 			
+			image_perp30_zE = self.plot_embedding(self.embedded_z_dict['perp30_zE'], title="Z_Env Space {0} Perp 30".format(statistics_line))
+			image_perp30_zR = self.plot_embedding(self.embedded_z_dict['perp30_zR'], title="Z_Robot Space {0} Perp 30".format(statistics_line))
+
+			self.embedded_z_dict['perp30_shared_zRzE'] = np.concatenate([self.latent_z_set[:,:int(self.latent_z_dimensionality/2)], self.latent_z_set[:,int(self.latent_z_dimensionality/2):]], axis=0)
+			image_perp30_shared_zRzE = self.plot_embedding(self.embedded_z_dict['perp30_shared_zRzE'], title="Z_Robot Space {0} Perp 30".format(statistics_line), shared=True)
 			# Now adding image visuals to the wandb logs.
 			# log_dict["GT Trajectory"] = self.return_wandb_image(self.visualize_trajectory(sample_traj))
 			log_dict["Embedded Z Space Perplexity 5"] = self.return_wandb_image(image_perp5)
-			log_dict["Embedded Z Space Perplexity 10"] =  self.return_wandb_image(image_perp10)
-			log_dict["Embedded Z Space Perplexity 30"] =  self.return_wandb_image(image_perp30)
+			log_dict["Embedded Z Space Perplexity 10"] = self.return_wandb_image(image_perp10)
+			log_dict["Embedded Z Space Perplexity 30"] = self.return_wandb_image(image_perp30)
+
+			log_dict["Embedded Z_Env Space Perplexity 30"] = self.return_wandb_image(image_perp30_zE)
+			log_dict["Embedded Z_Robot Space Perplexity 30"] = self.return_wandb_image(image_perp30_zR)
+			log_dict["Embedded Shared Z_RobotEnv Space Perplexity 30"] = self.return_wandb_image(image_perp30_shared_zRzE)
 
 		# if counter%self.args.metric_eval_freq==0:
 		# 	self.visualize_robot_data(load_sets=False, number_of_trajectories_to_visualize=10)
@@ -2741,7 +2764,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		
 		if shared:
 			colors = 0.2*np.ones((2*self.N))
-			colors[self.N:] = 0.8
+			colors[self.N:] = 0.92
 		else:
 			colors = 0.2*np.ones((self.N))
 
@@ -3294,12 +3317,25 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		
 		z_robot_distances = torch.cdist(z_robot_set, z_robot_set)
 		z_env_distances = torch.cdist(z_env_set, z_env_set)
-				
+		z_joint_distances = torch.cdist(update_dict['latent_z'][0], update_dict['latent_z'][0])
+
+		if self.args.metric_distance_space=='z_R':
+			z_distances = z_robot_distances
+		elif self.args.metric_distance_space=='z_J':
+			z_distances = z_joint_distances
+		elif self.args.metric_distance_space=='rel_zR_zE':
+
+			# For each element in batch, compute relative vector between zR and zE. 
+			relative_zR_zE_vector = z_robot_set - z_env_set
+			
+			# Now compute distances of this across the batch. 
+			z_distances = torch.cdist(relative_zR_zE_vector , relative_zR_zE_vector)
+					
 		##############################
 		# 3) Compute Masks. 
 		##############################	
 
-		# print("Embedding in z env aux loss computation")
+		# print("Embedding in z env aukx loss computation")
 		# embed()
 
 		# Compute a mask, where the entries are 1., when ||z_E^i - z_E^j||<Delta, so apply L_aux = max(epsilon, ||z_R^i - z_R^j||^2). 
@@ -3314,8 +3350,8 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		# 4) Compute Positive and Negative loss components. 
 		##############################
 						
-		unmasked_aux_z_env_loss_positive_component = torch.clamp(z_robot_distances, min=self.args.positive_z_distance_margin)
-		unmasked_aux_z_env_loss_negative_component = torch.clamp(self.args.negative_z_distance_margin - z_robot_distances, min=0.)
+		unmasked_aux_z_env_loss_positive_component = torch.clamp(z_distances, min=self.args.positive_z_distance_margin)
+		unmasked_aux_z_env_loss_negative_component = torch.clamp(self.args.negative_z_distance_margin - z_distances, min=0.)
 
 		self.masked_aux_z_env_loss_positive_component = (positive_triangularized_mask*unmasked_aux_z_env_loss_positive_component).mean()
 		self.masked_aux_z_env_loss_negative_component = (negative_triangularized_mask*unmasked_aux_z_env_loss_negative_component).mean()
