@@ -3255,7 +3255,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		##############################
 		
 		# Compute Z distances. 
-		z_distances = torch.cdist(update_dict['latent_z'], update_dict['latent_z'])
+		z_distances = self.pairwise_z_distances_dict['z_joint_distances']
 	
 		##############################
 		# Select the position of the first object for the trajectory based loss. 
@@ -3299,9 +3299,18 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			# 3) Compute target of metric losses. 
 			##############################	
 
-			metric_loss_target = self.args.gamma * trajectory_distances
+			clamped_trajectory_distances = torch.clamp(trajectory_distances, min=self.args.positive_z_distance_margin, max=self.args.negative_z_distance_margin)			
+			metric_loss_target = clamped_trajectory_distances
 
+			##############################
+			# 4) Construct masked loss.
+			##############################	
 
+			unmasked_aux_z_env_loss_positive_component = torch.square(z_distances - metric_loss_target)
+			unmasked_aux_z_env_loss_negative_component = 0. 
+
+			self.masked_aux_env_effect_traj_loss_positive_component = torch.triu(unmasked_aux_z_env_loss_positive_component, diagonal=1).sum()
+			self.masked_aux_env_effect_traj_loss_negative_component = 0.
 
 		##############################
 		# 5) Weight Positive and Negative loss components. 
@@ -3335,14 +3344,10 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		# 2) Compute Z distances for both Z Sets. 
 		##############################
 		
-		z_robot_distances = torch.cdist(z_robot_set, z_robot_set)
-		z_env_distances = torch.cdist(z_env_set, z_env_set)
-		z_joint_distances = torch.cdist(update_dict['latent_z'][0], update_dict['latent_z'][0])
-
 		if self.args.metric_distance_space=='z_R':
-			z_distances = z_robot_distances
+			z_distances = self.pairwise_z_distances_dict['z_robot_distances']
 		elif self.args.metric_distance_space=='z_J':
-			z_distances = z_joint_distances
+			z_distances = self.pairwise_z_distances_dict['z_joint_distances']
 		elif self.args.metric_distance_space=='rel_zR_zE':
 
 			# For each element in batch, compute relative vector between zR and zE. 
