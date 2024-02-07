@@ -463,6 +463,7 @@ def parse_arguments():
 	parser.add_argument('--auxillary_z_env_effect_z_loss_weight', dest='auxillary_z_env_effect_z_loss_weight', type=float, default=0., help='Weight to place on aux z_env effect loss. ')
 	parser.add_argument('--auxillary_env_effect_traj_loss_weight', dest='auxillary_env_effect_traj_loss_weight', type=float, default=0., help='Weight to place on aux env effect traj loss. ')
 	parser.add_argument('--metric_distance_space', dest='metric_distance_space', type=str, default='z_R', choices=['z_R', 'z_J', 'rel_zR_zE'], help='The stream over which metric losses in Z space are computed. Can be just robot, or joint zs.')	
+	parser.add_argument('--z_env_loss_style', dest='z_env_loss_style', type=str, default='contrastive', choices=['contrastive','metric'], help='Whether to define a contrastive loss or a metric loss.')
 
 	# absolute state reconstruction
 	parser.add_argument('--cummulative_computed_state_reconstruction_loss_weight', dest='cummulative_computed_state_reconstruction_loss_weight', type=float, default=0., \

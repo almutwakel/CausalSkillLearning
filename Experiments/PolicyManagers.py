@@ -3057,7 +3057,8 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		if self.args.relative_state_reconstruction_loss_weight>0.:
 			self.compute_relative_state_reconstruction_loss()
 
-		if self.args.task_based_aux_loss_weight>0. or self.args.relative_state_phase_aux_loss_weight>0.:
+		# if self.args.task_based_aux_loss_weight>0. or self.args.relative_state_phase_aux_loss_weight>0. or :
+		if self.args.task_based_aux_loss_weight + self.args.relative_state_phase_aux_loss_weight + self.auxillary_env_effect_z_loss_weight + self.aux_env_effect_z_loss_weight >0.
 			self.compute_pairwise_z_distance(update_dict['latent_z'][0])
 		
 		# Computing z_env based auxillary loss based only on Z_ENV component. 
@@ -3118,12 +3119,20 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 
 	def compute_pairwise_z_distance(self, z_set):
 
-		# Compute pairwise distances between z's. 
-		self.pairwise_z_distance = torch.cdist(z_set, z_set)
-		
+		# Assumes it got update_dict['latent_z'][0] as input. 
+		# Partition z sets for streamwise distances. 		
+		z_robot_set = z_set[...,:int(self.latent_z_dimensionality/2)]
+		z_env_set = z_set[...,int(self.latent_z_dimensionality/2):]
+
+		# Construct dictionary of all z distances so that they can be computed here. 		
+		self.pairwise_z_distances_dict = {}
+		self.pairwise_z_distances_dict['z_robot_distances'] = torch.cdist(z_robot_set, z_robot_set)
+		self.pairwise_z_distances_dict['z_env_distances'] = torch.cdist(z_env_set, z_env_set)			
+		self.pairwise_z_distances_dict['z_joint_distances'] = torch.cdist(z_set, z_set)
+
 		# Clamped z distance loss. 
 		# self.clamped_pairwise_z_distance = torch.clamp(self.pairwise_z_distance - self.args.pairwise_z_distance_threshold, min=0.)
-		self.clamped_pairwise_z_distance = torch.clamp(self.args.pairwise_z_distance_threshold - self.pairwise_z_distance, min=0.)
+		self.clamped_pairwise_z_distance = torch.clamp(self.args.pairwise_z_distance_threshold - self.pairwise_z_distances_dict['z_joint_distances'], min=0.)
 
 	def compute_task_based_aux_loss(self, update_dict):
 
@@ -3150,8 +3159,8 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		# 4) Compute Positive and Negative loss components. 
 		##############################
 
-		unmasked_task_based_aux_loss_positive_component = torch.clamp(self.pairwise_z_distance, min=self.args.positive_z_distance_margin)
-		unmasked_task_based_aux_loss_negative_component = torch.clamp(self.args.negative_z_distance_margin - self.pairwise_z_distance, min=0.)
+		unmasked_task_based_aux_loss_positive_component = torch.clamp(self.pairwise_z_distances_dict['z_joint_distances'], min=self.args.positive_z_distance_margin)
+		unmasked_task_based_aux_loss_negative_component = torch.clamp(self.args.negative_z_distance_margin - self.pairwise_z_distances_dict['z_joint_distances'], min=0.)
 
 		self.masked_task_based_aux_loss_positive_component = (positive_triangularized_mask*unmasked_task_based_aux_loss_positive_component).mean()
 		self.masked_task_based_aux_loss_negative_component = (negative_triangularized_mask*unmasked_task_based_aux_loss_negative_component).mean()
@@ -3174,7 +3183,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		self.relative_state_vector_similarity_matrix = (self.relative_state_vector_distance==0).float()		
 
 		# Now set positive loss.
-		positive_weighted_rel_state_phase_loss = self.relative_state_vector_similarity_matrix*self.pairwise_z_distance
+		positive_weighted_rel_state_phase_loss = self.relative_state_vector_similarity_matrix*self.pairwise_z_distances_dict['z_joint_distances']
 
 		# Set negative component
 		negative_weighted_rel_state_phase_loss = (1.-self.relative_state_vector_similarity_matrix)*self.clamped_pairwise_z_distance
@@ -3247,7 +3256,6 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		
 		# Compute Z distances. 
 		z_distances = torch.cdist(update_dict['latent_z'], update_dict['latent_z'])
-
 	
 		##############################
 		# Select the position of the first object for the trajectory based loss. 
@@ -3261,28 +3269,40 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		# Compute trajectory distances.
 		trajectory_distances = torch.cdist(normalized_object_torch_traj, normalized_object_torch_traj).mean(axis=0)						
 
-		##############################
-		# 3) Compute Masks. 
-		##############################	
+		if self.args.z_env_loss_style=='contrastive':
+			
+			##############################
+			# 3) Compute Masks. 
+			##############################	
 
-		# Compute a mask, where the entries are 1., when ||z_E^i - z_E^j||<Delta, so apply L_aux = max(epsilon, ||z_R^i - z_R^j||^2). 
-		positive_full_mask = (trajectory_distances <= self.auxillary_z_env_effect_distance_threshold).int()
-		negative_full_mask = 1 - positive_full_mask
+			# Compute a mask, where the entries are 1., when ||z_E^i - z_E^j||<Delta, so apply L_aux = max(epsilon, ||z_R^i - z_R^j||^2). 
+			positive_full_mask = (trajectory_distances <= self.auxillary_z_env_effect_distance_threshold).int()
+			negative_full_mask = 1 - positive_full_mask
 
-		# Compute upper triangular versions of thes ematrics.
-		positive_triangularized_mask = torch.triu(positive_full_mask, diagonal=1)
-		negative_triangularized_mask = torch.triu(negative_full_mask, diagonal=1)
-		
-		##############################
-		# 4) Compute Positive and Negative loss components. 
-		##############################
-						
-		unmasked_aux_z_env_loss_positive_component = torch.clamp(z_distances, min=self.args.positive_z_distance_margin)
-		unmasked_aux_z_env_loss_negative_component = torch.clamp(self.args.negative_z_distance_margin - z_distances, min=0.)
+			# Compute upper triangular versions of thes ematrics.
+			positive_triangularized_mask = torch.triu(positive_full_mask, diagonal=1)
+			negative_triangularized_mask = torch.triu(negative_full_mask, diagonal=1)
+			
+			##############################
+			# 4) Compute Positive and Negative loss components. 
+			##############################
+							
+			unmasked_aux_z_env_loss_positive_component = torch.clamp(z_distances, min=self.args.positive_z_distance_margin)
+			unmasked_aux_z_env_loss_negative_component = torch.clamp(self.args.negative_z_distance_margin - z_distances, min=0.)
 
-		self.masked_aux_env_effect_traj_loss_positive_component = (positive_triangularized_mask*unmasked_aux_z_env_loss_positive_component).mean()
-		self.masked_aux_env_effect_traj_loss_negative_component = (negative_triangularized_mask*unmasked_aux_z_env_loss_negative_component).mean()
-		
+			self.masked_aux_env_effect_traj_loss_positive_component = (positive_triangularized_mask*unmasked_aux_z_env_loss_positive_component).mean()
+			self.masked_aux_env_effect_traj_loss_negative_component = (negative_triangularized_mask*unmasked_aux_z_env_loss_negative_component).mean()
+
+		elif self.args.z_env_loss_style=='metric':
+
+			##############################
+			# 3) Compute target of metric losses. 
+			##############################	
+
+			metric_loss_target = self.args.gamma * trajectory_distances
+
+
+
 		##############################
 		# 5) Weight Positive and Negative loss components. 
 		##############################
@@ -3329,14 +3349,11 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			relative_zR_zE_vector = z_robot_set - z_env_set
 			
 			# Now compute distances of this across the batch. 
-			z_distances = torch.cdist(relative_zR_zE_vector , relative_zR_zE_vector)
+			z_distances = torch.cdist(relative_zR_zE_vector, relative_zR_zE_vector)
 					
 		##############################
 		# 3) Compute Masks. 
 		##############################	
-
-		# print("Embedding in z env aukx loss computation")
-		# embed()
 
 		# Compute a mask, where the entries are 1., when ||z_E^i - z_E^j||<Delta, so apply L_aux = max(epsilon, ||z_R^i - z_R^j||^2). 
 		positive_full_mask = (z_env_distances <= self.auxillary_z_env_effect_distance_threshold).int()
@@ -3346,6 +3363,9 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		positive_triangularized_mask = torch.triu(positive_full_mask, diagonal=1)
 		negative_triangularized_mask = torch.triu(negative_full_mask, diagonal=1)
 		
+		# print("Embedding in z env aukx loss computation")
+		# embed()
+
 		##############################
 		# 4) Compute Positive and Negative loss components. 
 		##############################
