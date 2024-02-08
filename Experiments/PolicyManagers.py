@@ -3390,8 +3390,8 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		positive_triangularized_mask = torch.triu(positive_full_mask, diagonal=1)
 		negative_triangularized_mask = torch.triu(negative_full_mask, diagonal=1)
 		
-		print("Embedding in z env aux loss computation.")
-		embed()
+		# print("Embedding in z env aux loss computation.")
+		# embed()
 
 		##############################
 		# 4) Compute Positive and Negative loss components. 
@@ -3737,12 +3737,12 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 				self.visualize_robot_data(load_sets=whether_load_z_set)
 
 				
-				print("###############################################")
-				print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
-				print("Query before we run get trajectory latent sets, so latent_z_set isn't overwritten..")
-				print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
-				print("###############################################")				
-				embed()
+				# print("###############################################")
+				# print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+				# print("Query before we run get trajectory latent sets, so latent_z_set isn't overwritten..")
+				# print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+				# print("###############################################")				
+				# embed()
 
 				# Get reconstruction error... 
 				self.get_trajectory_and_latent_sets(get_visuals=True)
