@@ -9,7 +9,7 @@ import copy
 from IPython import embed
 from scipy.spatial.transform import Rotation as R
 
-def normalize_quaternion(self, q):
+def normalize_quaternion(q):
 	# Define quaternion normalization function.
 	return q/np.linalg.norm(q)
 
@@ -145,7 +145,6 @@ class RealWorldHumanRigid_PreDataset(object):
 		self.set_ground_tag_pose_dict()
 		self.setup()
 		
-
 		self.stat_dir_name ='RealWorldHumanRigid'
 
 	def tag_preprocessing(self, cam_tag_detections=None, task_name=None):
