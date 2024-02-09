@@ -279,6 +279,7 @@ class RealWorldHumanRigid_PreDataset(object):
 
 			gnd_cam_R=demonstration['ground_cam_frame_pose'][str(cam_num)]['orientation']
 			gnd_cam_t=demonstration['ground_cam_frame_pose'][str(cam_num)]['position']
+			
 			for idx in range(self.demo_length):
 
 				keypoint_data = demonstration['raw_keypoints'][cam][idx]
