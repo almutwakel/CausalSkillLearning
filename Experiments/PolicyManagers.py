@@ -3361,8 +3361,6 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		z_robot_set = update_dict['latent_z'][0,:,:int(self.latent_z_dimensionality/2)]
 		z_env_set = update_dict['latent_z'][0,:,int(self.latent_z_dimensionality/2):]
 
-
-
 		##############################
 		# 2) Compute Z distances for both Z Sets. 
 		##############################
