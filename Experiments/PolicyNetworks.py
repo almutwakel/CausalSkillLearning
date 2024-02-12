@@ -36,19 +36,53 @@ class PositionalEncoding(torch.nn.Module):
 	
 	# 	return self.dropout(x)
 	
-	def forward(self, x: torch.Tensor, temporal_offset=0) -> torch.Tensor:
+	# def forward(self, x: torch.Tensor, temporal_offset=0) -> torch.Tensor:
+	# 	"""
+	# 	Arguments:
+	# 		x: Tensor, shape ``[seq_len, batch_size, embedding_dim]``
+			
+	# 		temporal_offset: Optional starting index that is used as an offset. 
+	# 	"""		
+
+	# 	x = x + self.pe[temporal_offset:temporal_offset+x.size(0)]
+	
+	# 	return self.dropout(x)
+
+
+	def forward(self, x: torch.Tensor, temporal_offset_start_indices=None) -> torch.Tensor:
 		"""
 		Arguments:
 			x: Tensor, shape ``[seq_len, batch_size, embedding_dim]``
 			
 			temporal_offset: Optional starting index that is used as an offset. 
 		"""		
-
-		x = x + self.pe[temporal_offset:temporal_offset+x.size(0)]
-	
-		return self.dropout(x)
 	
 
+		if temporal_offset_start_indices is None:
+			positional_embedding = self.pe[:x.size(0)]			
+		else:
+
+			print("Embedding in posiitonal embedding computation.")
+			embed()
+			# If we aren't using a temporal offset in positional encoding, use 0s as default.. 	
+			temporal_offset_ending_indices = temporal_offset_start_indices+x.shape[0]
+
+			# Create indexer object. 	
+			# Taken from https://stackoverflow.com/questions/61290287/how-can-i-slice-a-pytorch-tensor-with-another-tensor
+			indexer = np.r_[tuple([np.s_[i:j] for (i,j) in zip(temporal_offset_start_indices, temporal_offset_ending_indices)])]	
+
+			orig_positional_embedding = self.pe[indexer, :, :]
+			reshaped_positional_embedding = orig_positional_embedding.view(x.shape[1], x.shape[0], -1)
+			positional_embedding = torch.swapaxes(reshaped_positional_embedding, 0, 1)
+
+		combined_input_positional_embedding = x + positional_embedding
+	
+		return self.dropout(combined_input_positional_embedding)
+
+
+
+			
+	
 class PolicyNetwork_BaseClass(torch.nn.Module):
 	
 	def __init__(self):
@@ -1968,7 +2002,6 @@ class ContinuousVariationalPolicyNetwork_Batch(ContinuousVariationalPolicyNetwor
 	def get_probabilities(self, input, epsilon, precomputed_b=None, evaluate_value=None):
 		return self.forward(input, epsilon, precomputed_b=precomputed_b, evaluate_z_probability=evaluate_value)
 
-
 class ContinuousContextualVariationalPolicyNetwork(ContinuousVariationalPolicyNetwork_Batch):
 
 	def __init__(self, input_size, hidden_size, z_dimensions, args, number_layers=4):
@@ -2474,7 +2507,7 @@ class ContinuousEncoderNetwork(PolicyNetwork_BaseClass):
 			else:
 				self.network_dict['positional_encoding_layer'] = PositionalEncoding(self.size_dict['input_size'])
 
-	def forward(self, input, epsilon=0.0001, network_dict=None, size_dict=None, z_sample_to_evaluate=None, artificial_batch_size=None, greedy=False):
+	def forward(self, input, epsilon=0.0001, network_dict=None, size_dict=None, z_sample_to_evaluate=None, artificial_batch_size=None, positional_encoding_offsets=None, greedy=False):
 
 		##############################
 		# Set default inputs.
@@ -2503,6 +2536,10 @@ class ContinuousEncoderNetwork(PolicyNetwork_BaseClass):
 		if self.args.positional_encoding:
 			# Encode add positional encoding to the input. 
 			# new_input = self.positional_encoding_layer(format_input)
+
+			if positional_encoding_offsets is None:
+				positional_encoding_offset_values = np.zeros(self.args.batch_size)
+
 			posembed_input = network_dict['positional_encoding_layer'](state_rep_input)
 		else:
 			posembed_input = state_rep_input
