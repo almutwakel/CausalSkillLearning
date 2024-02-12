@@ -48,8 +48,8 @@ class PositionalEncoding(torch.nn.Module):
 	
 	# 	return self.dropout(x)
 
-
 	def forward(self, x: torch.Tensor, temporal_offset_start_indices=None) -> torch.Tensor:
+	# def forward(self, x, temporal_offset_start_indices=None):
 		"""
 		Arguments:
 			x: Tensor, shape ``[seq_len, batch_size, embedding_dim]``
@@ -57,7 +57,6 @@ class PositionalEncoding(torch.nn.Module):
 			temporal_offset: Optional starting index that is used as an offset. 
 		"""		
 	
-
 		if temporal_offset_start_indices is None:
 			positional_embedding = self.pe[:x.size(0)]			
 		else:
@@ -2708,12 +2707,12 @@ class ContinuousFactoredEncoderNetwork(ContinuousEncoderNetwork):
 			# Logging this here, but it's also going to be run separately in the forward function.
 			self.robot_input_representation = self.get_robot_input_representation(robot_input)
 
-			robot_latent_z, robot_logprob, robot_entropy, robot_kl_divergence = super().forward(robot_input, epsilon, network_dict=self.robot_network_dict, size_dict=self.robot_size_dict, z_sample_to_evaluate=robot_z_sample, greedy=greedy, positional_encoding_offsets=None)
+			robot_latent_z, robot_logprob, robot_entropy, robot_kl_divergence = super().forward(robot_input, epsilon, network_dict=self.robot_network_dict, size_dict=self.robot_size_dict, z_sample_to_evaluate=robot_z_sample, greedy=greedy, positional_encoding_offsets=positional_encoding_offsets)
 
 			# # (2b) Run forward on env stream.		
 			self.environment_input_representation = self.get_environment_input_representation(env_input)
 								
-			env_latent_z, env_logprob, env_entropy, env_kl_divergence = super().forward(env_input, epsilon, network_dict=self.env_network_dict, size_dict=self.env_size_dict, z_sample_to_evaluate=env_z_sample, greedy=greedy, positional_encoding_offsets=None)
+			env_latent_z, env_logprob, env_entropy, env_kl_divergence = super().forward(env_input, epsilon, network_dict=self.env_network_dict, size_dict=self.env_size_dict, z_sample_to_evaluate=env_z_sample, greedy=greedy, positional_encoding_offsets=positional_encoding_offsets)
 
 			##################################
 			# (3) Aggregate stream outputs. 
