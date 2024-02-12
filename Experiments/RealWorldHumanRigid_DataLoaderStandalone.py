@@ -129,9 +129,12 @@ class RealWorldHumanRigid_PreDataset(object):
 		
 		# Require a task list. 
 		# The task name is needed for setting the environment, rendering. 
-		self.task_list = ['PickPlace', 'BoxOpening', 'Stirring', 'Pouring', 'DrawerOpening']
-		self.environment_names = ['PickPlace', 'BoxOpening', 'Stirring', 'Pouring', 'DrawerOpening']    
-		self.num_demos = np.array([10, 10, 10, 5, 6])
+		# self.task_list = ['Pouring', 'BoxOpening', 'DrawerOpening', 'PickPlace', 'Stirring']		
+		self.task_list = ['Pouring', 'BoxOpening', 'DrawerOpening', 'Pouring+Stirring', 'DrawerOpening+PickPlace', 'BoxOpening+Pouring', 'PickPlace', 'Stirring']		
+		self.environment_names = ['Pouring', 'BoxOpening', 'DrawerOpening', 'Pouring+Stirring', 'DrawerOpening+PickPlace', 'BoxOpening+Pouring', 'PickPlace', 'Stirring']
+		# self.environment_names = [ 'Pouring', 'BoxOpening', 'DrawerOpening', 'PickPlace', 'Stirring']
+		# self.num_demos = np.array([5, 6, 6, 10, 10])
+		self.num_demos = np.array([5, 6, 6, 6, 6, 6, 10, 10])
 
 		# Each task has different number of demos according to our Human Dataset.
 		self.number_tasks = len(self.task_list)
@@ -141,7 +144,7 @@ class RealWorldHumanRigid_PreDataset(object):
 		self.total_length = self.num_demos.sum()		
 
 		# self.ds_freq = 1*np.ones(self.number_tasks).astype(int)
-		self.ds_freq = np.array([6, 6, 7, 8, 8])
+		self.ds_freq = np.array([6, 6, 7, 7, 7, 8, 8, 8])
 
 		# Set files. 
 		self.set_ground_tag_pose_dict()
@@ -655,6 +658,7 @@ class RealWorldHumanRigid_PreDataset(object):
 		new_demonstration['hand-state'] = np.concatenate((demonstration['flat_keypoints'], hand_orientation), axis=-1) # number_of_keypoints*3 + 4 = 67 values (UPDATE 7*3 + 4 = 25)
 		new_demonstration['demo'] = np.concatenate([ new_demonstration['hand-state'], \
 					  							new_demonstration['all-object-state']], axis=-1)  # 67+14 = 81 values  (UPDATE  25 + 28 = 53)
+		new_demonstration['images'] = demonstration['images']
 
 		#if self.args.images_in_real_world_dataset:
 		# Put images of primary camera into separate topic.. 
