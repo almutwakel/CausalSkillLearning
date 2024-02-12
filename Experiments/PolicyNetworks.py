@@ -54,7 +54,8 @@ class PositionalEncoding(torch.nn.Module):
 
 			orig_positional_embedding = self.pe[indexer, :, :]
 			reshaped_positional_embedding = orig_positional_embedding.view(batch_size, sequence_length, -1)			
-			positional_embedding = torch.swapaxes(reshaped_positional_embedding, 0, 1)
+			# positional_embedding = torch.swapaxes(reshaped_positional_embedding, 0, 1)
+			positional_embedding = torch.transpose(reshaped_positional_embedding, 0, 1)
 
 		combined_input_positional_embedding = x + positional_embedding
 	
