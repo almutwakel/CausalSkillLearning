@@ -2678,7 +2678,7 @@ class ContinuousFactoredEncoderNetwork(ContinuousEncoderNetwork):
 		# Log this
 		return self.env_network_dict['state_representation_layer'](env_input)	
 
-	def forward(self, input, epsilon=0.00001, network_dict={}, size_dict={}, z_sample_to_evaluate=None, greedy=False):
+	def forward(self, input, epsilon=0.00001, network_dict={}, size_dict={}, z_sample_to_evaluate=None, greedy=False, positional_encoding_offsets=None):
 
 		# (1) Split input. 
 		# (2) Run forward on each stream. 
@@ -2708,12 +2708,12 @@ class ContinuousFactoredEncoderNetwork(ContinuousEncoderNetwork):
 			# Logging this here, but it's also going to be run separately in the forward function.
 			self.robot_input_representation = self.get_robot_input_representation(robot_input)
 
-			robot_latent_z, robot_logprob, robot_entropy, robot_kl_divergence = super().forward(robot_input, epsilon, network_dict=self.robot_network_dict, size_dict=self.robot_size_dict, z_sample_to_evaluate=robot_z_sample, greedy=greedy)
+			robot_latent_z, robot_logprob, robot_entropy, robot_kl_divergence = super().forward(robot_input, epsilon, network_dict=self.robot_network_dict, size_dict=self.robot_size_dict, z_sample_to_evaluate=robot_z_sample, greedy=greedy, positional_encoding_offsets=None)
 
 			# # (2b) Run forward on env stream.		
 			self.environment_input_representation = self.get_environment_input_representation(env_input)
 								
-			env_latent_z, env_logprob, env_entropy, env_kl_divergence = super().forward(env_input, epsilon, network_dict=self.env_network_dict, size_dict=self.env_size_dict, z_sample_to_evaluate=env_z_sample, greedy=greedy)
+			env_latent_z, env_logprob, env_entropy, env_kl_divergence = super().forward(env_input, epsilon, network_dict=self.env_network_dict, size_dict=self.env_size_dict, z_sample_to_evaluate=env_z_sample, greedy=greedy, positional_encoding_offsets=None)
 
 			##################################
 			# (3) Aggregate stream outputs. 
