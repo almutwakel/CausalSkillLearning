@@ -613,13 +613,14 @@ class RealWorldHumanRigid_PreDataset(object):
 
 		# for k in demonstration.keys():
 		key_list = ['hand-state', 'all-object-state', 'demo', 'images']
-
-		print("Embedding in process demo")
-		embed()
+		
 		#if self.args.images_in_real_world_dataset:
 		# key_list.append('images')
 		for k in key_list:
 			demonstration[k] = resample(demonstration[k], number_timepoints)
+
+		# Downsample images spatially by 2
+		demonstration['images'] = demonstration['images'][:, ::2, ::2, :]
 		
 	def collate_states(self, demonstration):
 
