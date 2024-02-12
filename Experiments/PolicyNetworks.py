@@ -45,8 +45,6 @@ class PositionalEncoding(torch.nn.Module):
 			sequence_length = x.shape[0]
 			batch_size = x.shape[1]
 
-			print("Embedding in posiitonal embedding computation.")
-			embed()
 			# If we aren't using a temporal offset in positional encoding, use 0s as default.. 	
 			temporal_offset_ending_indices = temporal_offset_start_indices+x.shape[0]
 
@@ -55,11 +53,10 @@ class PositionalEncoding(torch.nn.Module):
 			indexer = np.r_[tuple([np.s_[i:j] for (i,j) in zip(temporal_offset_start_indices, temporal_offset_ending_indices)])]	
 
 			orig_positional_embedding = self.pe[indexer, :, :]
-			reshaped_positional_embedding = orig_positional_embedding.view(batch_size, sequence_length, -1)
-			# Don't actually swap
-			# positional_embedding = torch.swapaxes(reshaped_positional_embedding, 0, 1)
+			reshaped_positional_embedding = orig_positional_embedding.view(batch_size, sequence_length, -1)			
+			positional_embedding = torch.swapaxes(reshaped_positional_embedding, 0, 1)
 
-		combined_input_positional_embedding = x + reshaped_positional_embedding
+		combined_input_positional_embedding = x + positional_embedding
 	
 		return self.dropout(combined_input_positional_embedding)
 	
