@@ -27,27 +27,6 @@ class PositionalEncoding(torch.nn.Module):
 		pe[:, 0, 1::2] = torch.cos(position * div_term)
 		self.register_buffer('pe', pe)
 
-	# def forward(self, x: torch.Tensor) -> torch.Tensor:
-	# 	"""
-	# 	Arguments:
-	# 		x: Tensor, shape ``[seq_len, batch_size, embedding_dim]``
-	# 	"""
-	# 	x = x + self.pe[:x.size(0)]
-	
-	# 	return self.dropout(x)
-	
-	# def forward(self, x: torch.Tensor, temporal_offset=0) -> torch.Tensor:
-	# 	"""
-	# 	Arguments:
-	# 		x: Tensor, shape ``[seq_len, batch_size, embedding_dim]``
-			
-	# 		temporal_offset: Optional starting index that is used as an offset. 
-	# 	"""		
-
-	# 	x = x + self.pe[temporal_offset:temporal_offset+x.size(0)]
-	
-	# 	return self.dropout(x)
-
 	def forward(self, x: torch.Tensor, temporal_offset_start_indices=None) -> torch.Tensor:
 	# def forward(self, x, temporal_offset_start_indices=None):
 		"""
