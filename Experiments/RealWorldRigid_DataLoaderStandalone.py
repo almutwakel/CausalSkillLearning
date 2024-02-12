@@ -244,6 +244,9 @@ class RealWorldRigid_PreDataset(object):
 
 		# if self.args.images_in_real_world_dataset:
 		#  Put images of primary camera into separate topic.. 
+
+		print("Embedding in process demo")
+		embed()
 		new_demonstration['images'] = demonstration['images']['cam{0}'.format(demonstration['primary_camera'])]
 
 		return new_demonstration

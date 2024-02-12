@@ -612,7 +612,7 @@ class RealWorldHumanRigid_PreDataset(object):
 		number_timepoints = int(demonstration['demo'].shape[0] // ds_freq)
 
 		# for k in demonstration.keys():
-		key_list = ['hand-state', 'all-object-state', 'demo']
+		key_list = ['hand-state', 'all-object-state', 'demo', 'images']
 		#if self.args.images_in_real_world_dataset:
 		# key_list.append('images')
 		for k in key_list:
