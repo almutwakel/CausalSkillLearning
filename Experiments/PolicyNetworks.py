@@ -2534,7 +2534,7 @@ class ContinuousEncoderNetwork(PolicyNetwork_BaseClass):
 			# new_input = self.positional_encoding_layer(format_input)
 
 			# THe positonal encoding layer can handle None being provided as an input.. 
-			posembed_input = network_dict['positional_encoding_layer'](state_rep_input, positional_encoding_offsets)
+			posembed_input = network_dict['positional_encoding_layer'](state_rep_input, temporal_offset_start_indices=positional_encoding_offsets)
 		else:
 			posembed_input = state_rep_input
 
