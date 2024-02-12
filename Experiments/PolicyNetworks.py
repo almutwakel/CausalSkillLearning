@@ -78,10 +78,6 @@ class PositionalEncoding(torch.nn.Module):
 		combined_input_positional_embedding = x + positional_embedding
 	
 		return self.dropout(combined_input_positional_embedding)
-
-
-
-			
 	
 class PolicyNetwork_BaseClass(torch.nn.Module):
 	
@@ -2537,10 +2533,8 @@ class ContinuousEncoderNetwork(PolicyNetwork_BaseClass):
 			# Encode add positional encoding to the input. 
 			# new_input = self.positional_encoding_layer(format_input)
 
-			if positional_encoding_offsets is None:
-				positional_encoding_offset_values = np.zeros(self.args.batch_size)
-
-			posembed_input = network_dict['positional_encoding_layer'](state_rep_input)
+			# THe positonal encoding layer can handle None being provided as an input.. 
+			posembed_input = network_dict['positional_encoding_layer'](state_rep_input, positional_encoding_offsets)
 		else:
 			posembed_input = state_rep_input
 

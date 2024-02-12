@@ -3619,7 +3619,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			torch_traj_seg = torch.tensor(state_action_trajectory).to(device).float()
 			# Encode trajectory segment into latent z. 		
 						
-			latent_z, encoder_loglikelihood, encoder_entropy, kl_divergence = self.encoder_network.forward(torch_traj_seg, self.epsilon)
+			latent_z, encoder_loglikelihood, encoder_entropy, kl_divergence = self.encoder_network.forward(torch_traj_seg, self.epsilon, positional_encoding_offsets=self.batch_segment_indices)
 			# latent_z, encoder_loglikelihood, encoder_entropy, kl_divergence = self.encoder_network.forward(torch_traj_seg)
 			
 			####################################
