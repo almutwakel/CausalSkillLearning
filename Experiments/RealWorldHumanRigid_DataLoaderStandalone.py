@@ -973,7 +973,7 @@ class RealWorldHumanRigid_PreDataset(object):
 			# For every demo in this task
 			#########################
 
-			#for j in range(self.num_demos[task_index]):			
+			#for j in range(self.num_demos[task_index]):	
 			for j, file in enumerate(sorted(glob.glob(os.path.join(task_file_path,'*.npy')))):
 			
 				print("####################")
@@ -984,6 +984,7 @@ class RealWorldHumanRigid_PreDataset(object):
 				# demonstration = np.load(file, allow_pickle=True).item()
 				# file = os.path.join(task_file_path, 'demo{0}.npy'.format(j))
 				#alt_file = os.path.join(alt_task_file_path, 'demo{0}.npy'.format(j))
+			
 				task_name, demonstration = np.load(file, allow_pickle=True)
 				#alt_demonstration = np.load(alt_file, allow_pickle=True).item()
 				#demonstration['primary_camera'] = alt_demonstration['primary_camera']

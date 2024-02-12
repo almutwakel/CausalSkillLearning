@@ -27,14 +27,27 @@ class PositionalEncoding(torch.nn.Module):
 		pe[:, 0, 1::2] = torch.cos(position * div_term)
 		self.register_buffer('pe', pe)
 
-	def forward(self, x: torch.Tensor) -> torch.Tensor:
+	# def forward(self, x: torch.Tensor) -> torch.Tensor:
+	# 	"""
+	# 	Arguments:
+	# 		x: Tensor, shape ``[seq_len, batch_size, embedding_dim]``
+	# 	"""
+	# 	x = x + self.pe[:x.size(0)]
+	
+	# 	return self.dropout(x)
+	
+	def forward(self, x: torch.Tensor, temporal_offset=0) -> torch.Tensor:
 		"""
 		Arguments:
 			x: Tensor, shape ``[seq_len, batch_size, embedding_dim]``
-		"""
-		x = x + self.pe[:x.size(0)]
+			
+			temporal_offset: Optional starting index that is used as an offset. 
+		"""		
+
+		x = x + self.pe[temporal_offset:temporal_offset+x.size(0)]
 	
 		return self.dropout(x)
+	
 
 class PolicyNetwork_BaseClass(torch.nn.Module):
 	
@@ -2410,7 +2423,7 @@ class ContinuousEncoderNetwork(PolicyNetwork_BaseClass):
 		self.size_dict['state_size'] = int(input_size/2)
 		self.size_dict['input_size'] = input_size
 		self.size_dict['output_size'] = output_size
-
+		
 		# Other layers.
 		self.num_layers = self.args.var_number_layers
 		self.hidden_size = hidden_size
@@ -2433,21 +2446,33 @@ class ContinuousEncoderNetwork(PolicyNetwork_BaseClass):
 	def define_networks(self, input_size, output_size):
 		
 		# Define a bidirectional LSTM now.
-		lstm = torch.nn.LSTM(input_size=input_size, hidden_size=self.hidden_size, num_layers=self.num_layers, bidirectional=True, dropout=self.args.dropout).to(device)
+
+		state_representation_layer = torch.nn.Linear(input_size, output_size)
+		
+		if self.args.state_representation_layer:
+			lstm_input_size = output_size
+		else:
+			lstm_input_size = input_size
+		
+		lstm = torch.nn.LSTM(input_size=lstm_input_size, hidden_size=self.hidden_size, num_layers=self.num_layers, bidirectional=True, dropout=self.args.dropout).to(device)
 
 		# Define output layers for the LSTM, and activations for this output layer. 
 		mean_output_layer = torch.nn.Linear(2*self.hidden_size, output_size).to(device)
-		variances_output_layer = torch.nn.Linear(2*self.hidden_size, output_size).to(device)
+		variances_output_layer = torch.nn.Linear(2*self.hidden_size, output_size).to(device)		
 
-		return lstm, mean_output_layer, variances_output_layer
+		return lstm, mean_output_layer, variances_output_layer, state_representation_layer
 
 	def instantiate_networks(self):
 
 		self.network_dict = torch.nn.ModuleDict()
-		self.network_dict['lstm'], self.network_dict['mean_output_layer'], self.network_dict['variances_output_layer'] = self.define_networks(self.size_dict['input_size'], self.size_dict['output_size'])
+		self.network_dict['lstm'], self.network_dict['mean_output_layer'], self.network_dict['variances_output_layer'], self.network_dict['state_representation_layer'] = self.define_networks(self.size_dict['input_size'], self.size_dict['output_size']) 
 
 		if self.args.positional_encoding:
-			self.network_dict['positional_encoding_layer'] = PositionalEncoding(self.size_dict['input_size'])
+			if self.args.state_representation_layer: 
+				# This is because the oiutput size is set to the zdimension here..
+				self.network_dict['positional_encoding_layer'] = PositionalEncoding(self.size_dict['output_size'])
+			else:
+				self.network_dict['positional_encoding_layer'] = PositionalEncoding(self.size_dict['input_size'])
 
 	def forward(self, input, epsilon=0.0001, network_dict=None, size_dict=None, z_sample_to_evaluate=None, artificial_batch_size=None, greedy=False):
 
@@ -2469,19 +2494,24 @@ class ContinuousEncoderNetwork(PolicyNetwork_BaseClass):
 			batch_size = artificial_batch_size
 		
 		format_input = input.view((input.shape[0], batch_size, size_dict['input_size']))		
+	
+		if self.args.state_representation_layer:
+			state_rep_input = network_dict['state_representation_layer'](format_input)
+		else:
+			state_rep_input = format_input
 
 		if self.args.positional_encoding:
 			# Encode add positional encoding to the input. 
 			# new_input = self.positional_encoding_layer(format_input)
-			new_input = network_dict['positional_encoding_layer'](format_input)
+			posembed_input = network_dict['positional_encoding_layer'](state_rep_input)
 		else:
-			new_input = format_input	
+			posembed_input = state_rep_input
 
 		##############################
 		# Forward pass through LSTM. 
 		##############################
 				
-		outputs, hidden = network_dict['lstm'](new_input)
+		outputs, hidden = network_dict['lstm'](posembed_input)
 		concatenated_outputs = torch.cat([outputs[0,:,self.hidden_size:],outputs[-1,:,:self.hidden_size]],dim=-1).view((1,batch_size,-1))
 
 		##############################
@@ -2560,13 +2590,13 @@ class ContinuousFactoredEncoderNetwork(ContinuousEncoderNetwork):
 		self.robot_size_dict = {}
 		self.robot_size_dict['state_size'] = self.args.robot_state_size
 		self.robot_size_dict['input_size'] = 2*self.robot_size_dict['state_size']
-		self.robot_size_dict['output_size'] = int(self.args.z_dimensions/2)
+		self.robot_size_dict['output_size'] = int(self.args.z_dimensions/2)		
 
 		# Keep track of env. input and output state size. 
 		self.env_size_dict = {}
 		self.env_size_dict['state_size'] = self.args.env_state_size
 		self.env_size_dict['input_size'] = 2*self.env_size_dict['state_size']
-		self.env_size_dict['output_size'] = int(self.args.z_dimensions/2)
+		self.env_size_dict['output_size'] = int(self.args.z_dimensions/2)		
 
 		# Other layers.
 		self.num_layers = self.args.var_number_layers
@@ -2575,15 +2605,22 @@ class ContinuousFactoredEncoderNetwork(ContinuousEncoderNetwork):
 
 	def instantiate_networks(self):		
 
+		if self.args.state_representation_layer:
+			robot_pos_emb_input_size = self.robot_size_dict['output_size']			
+			env_pos_emb_input_size = self.env_size_dict['output_size']			
+		else:
+			robot_pos_emb_input_size = self.robot_size_dict['input_size']
+			env_pos_emb_input_size = self.env_size_dict['input_size']
+
 		# Define networks for robot stream.
 		self.robot_network_dict = torch.nn.ModuleDict()
-		self.robot_network_dict['lstm'], self.robot_network_dict['mean_output_layer'], self.robot_network_dict['variances_output_layer'] = self.define_networks(self.robot_size_dict['input_size'], self.robot_size_dict['output_size'])
-		self.robot_network_dict['positional_encoding_layer'] = PositionalEncoding(self.robot_size_dict['input_size'])
-
+		self.robot_network_dict['lstm'], self.robot_network_dict['mean_output_layer'], self.robot_network_dict['variances_output_layer'], self.robot_network_dict['state_representation_layer'] = self.define_networks(self.robot_size_dict['input_size'], self.robot_size_dict['output_size'])
+		self.robot_network_dict['positional_encoding_layer'] = PositionalEncoding(robot_pos_emb_input_size)
+		
 		# Define networks for environment stream.
 		self.env_network_dict = torch.nn.ModuleDict()
-		self.env_network_dict['lstm'], self.env_network_dict['mean_output_layer'], self.env_network_dict['variances_output_layer'] = self.define_networks(self.env_size_dict['input_size'], self.env_size_dict['output_size'])
-		self.env_network_dict['positional_encoding_layer'] = PositionalEncoding(self.env_size_dict['input_size'])
+		self.env_network_dict['lstm'], self.env_network_dict['mean_output_layer'], self.env_network_dict['variances_output_layer'], self.env_network_dict['state_representation_layer'] = self.define_networks(self.env_size_dict['input_size'], self.env_size_dict['output_size'])
+		self.env_network_dict['positional_encoding_layer'] = PositionalEncoding(env_pos_emb_input_size)		
 
 	def split_stream_inputs(self, input):
 
@@ -2600,11 +2637,15 @@ class ContinuousFactoredEncoderNetwork(ContinuousEncoderNetwork):
 
 		return super().forward(input, epsilon=epsilon, network_dict=self.robot_network_dict, size_dict=self.robot_size_dict, z_sample_to_evaluate=z_sample_to_evaluate, artificial_batch_size=artificial_batch_size, greedy=greedy)
 
+	def get_robot_input_representation(self, robot_input):
+
+		# Log this
+		return self.robot_network_dict['state_representation_layer'](robot_input)	
+
 	def get_environment_input_representation(self, env_input):
 		
-		
-		# Dummy function that we can override in the case of the soft object.
-		return env_input
+		# Log this
+		return self.env_network_dict['state_representation_layer'](env_input)	
 
 	def forward(self, input, epsilon=0.00001, network_dict={}, size_dict={}, z_sample_to_evaluate=None, greedy=False):
 
@@ -2630,13 +2671,18 @@ class ContinuousFactoredEncoderNetwork(ContinuousEncoderNetwork):
 		##################################
 
 		if z_sample_to_evaluate is None:
+			
 			# (2a) Run forward on robot stream.				
+
+			# Logging this here, but it's also going to be run separately in the forward function.
+			self.robot_input_representation = self.get_robot_input_representation(robot_input)
+
 			robot_latent_z, robot_logprob, robot_entropy, robot_kl_divergence = super().forward(robot_input, epsilon, network_dict=self.robot_network_dict, size_dict=self.robot_size_dict, z_sample_to_evaluate=robot_z_sample, greedy=greedy)
 
-			new_env_input = self.get_environment_input_representation(env_input)
-
-			# (2b) Run forward on env stream.							
-			env_latent_z, env_logprob, env_entropy, env_kl_divergence = super().forward(new_env_input, epsilon, network_dict=self.env_network_dict, size_dict=self.env_size_dict, z_sample_to_evaluate=env_z_sample, greedy=greedy)
+			# # (2b) Run forward on env stream.		
+			self.environment_input_representation = self.get_environment_input_representation(env_input)
+								
+			env_latent_z, env_logprob, env_entropy, env_kl_divergence = super().forward(env_input, epsilon, network_dict=self.env_network_dict, size_dict=self.env_size_dict, z_sample_to_evaluate=env_z_sample, greedy=greedy)
 
 			##################################
 			# (3) Aggregate stream outputs. 
