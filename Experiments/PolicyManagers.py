@@ -3841,10 +3841,10 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 
 		# # for i in range(self.N//self.args.batch_size+1, 32)
 		# for i in range(0, self.N, self.args.batch_size):
-    # for i in range(math.ceil(min(self.N, len(self.dataset))/self.args.batch_size)):
-    for i in range(math.ceil(self.N/self.args.batch_size)):
+	    # for i in range(math.ceil(min(self.N, len(self.dataset))/self.args.batch_size)):
+		for i in range(math.ceil(self.N/self.args.batch_size)):
 
-      number_batches_for_dataset = math.ceil(len(self.dataset)/self.args.batch_size)
+			number_batches_for_dataset = math.ceil(len(self.dataset)/self.args.batch_size)
 			j = i % number_batches_for_dataset
 			# j = 0, 1, 0, 1, 0, 1,
 
