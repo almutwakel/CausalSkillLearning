@@ -4348,7 +4348,7 @@ class PolicyManager_BatchPretrain(PolicyManager_Pretrain):
 			
 			batch_trajectory = np.zeros((self.args.batch_size, self.current_traj_len, self.state_size))
 			self.subsampled_relative_object_state = np.zeros((self.args.batch_size, self.current_traj_len, self.args.env_state_size))
-			self.batch_segment_indices = np.zeros((self.args.batch_size))
+			self.batch_segment_indices = np.zeros((self.args.batch_size),dtype=int)
 			# POTENTIAL:
 			# for x in range(min(self.args.batch_size, len(self.index_list) - 1)):
 
