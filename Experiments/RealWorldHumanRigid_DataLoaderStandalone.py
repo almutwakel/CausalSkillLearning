@@ -659,7 +659,7 @@ class RealWorldHumanRigid_PreDataset(object):
 		new_demonstration['hand-state'] = np.concatenate((demonstration['flat_keypoints'], hand_orientation), axis=-1) # number_of_keypoints*3 + 4 = 67 values (UPDATE 7*3 + 4 = 25)
 		new_demonstration['demo'] = np.concatenate([ new_demonstration['hand-state'], \
 					  							new_demonstration['all-object-state']], axis=-1)  # 67+14 = 81 values  (UPDATE  25 + 28 = 53)
-		new_demonstration['images'] = demonstration['images']
+		new_demonstration['images'] = np.array(demonstration['images'])
 
 		#if self.args.images_in_real_world_dataset:
 		# Put images of primary camera into separate topic.. 
