@@ -2783,7 +2783,11 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			colors = 0.2*np.ones((2*self.N))
 			colors[self.N:] = 0.92
 		else:
-			colors = 0.2*np.ones((self.N))
+			# colors = 0.2*np.ones((self.N))
+
+			# For now, plot colors using task ID. 
+			max_task = max(self.task_id_set)
+			colors = 0.1 + (0.75*(self.task_id_set/max_task))
 
 		if trajectory:
 			# Create a scatter plot of the embedding.
@@ -2805,11 +2809,11 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			color_range_max = 0.8*color_scaling+traj_length-1
 
 			for i in range(2*self.N):
-				ax.scatter(embedded_zs[i,0]+ratio*self.shared_trajectory_set[i,:,0],embedded_zs[i,1]+ratio*self.shared_trajectory_set[i,:,1],c=colors[i]*color_scaling+range(traj_length),cmap='jet',vmin=color_range_min,vmax=color_range_max)
+				ax.scatter(embedded_zs[i,0]+ratio*self.shared_trajectory_set[i,:,0],embedded_zs[i,1]+ratio*self.shared_trajectory_set[i,:,1],c=colors[i]*color_scaling+range(traj_length),cmap='jet',vmin=color_range_min,vmax=color_range_max,edgecolors='black')
 
 		else:
 			# Create a scatter plot of the embedding.
-			ax.scatter(embedded_zs[:,0],embedded_zs[:,1],c=colors,vmin=0,vmax=1,cmap='jet')
+			ax.scatter(embedded_zs[:,0],embedded_zs[:,1],c=colors,vmin=0,vmax=1,cmap='jet',edgecolors='black')
 		
 		# Title. 
 		ax.set_title("{0}".format(title),fontdict={'fontsize':15})
@@ -3844,6 +3848,8 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 	    # for i in range(math.ceil(min(self.N, len(self.dataset))/self.args.batch_size)):
 		for i in range(math.ceil(self.N/self.args.batch_size)):
 
+			# Was previously
+			# number_batches_for_dataset = (len(self.dataset)//self.args.batch_size)+1
 			number_batches_for_dataset = math.ceil(len(self.dataset)/self.args.batch_size)
 			j = i % number_batches_for_dataset
 			# j = 0, 1, 0, 1, 0, 1,
