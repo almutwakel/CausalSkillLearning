@@ -17,11 +17,13 @@ def resample(original_trajectory, desired_number_timepoints):
 	return original_trajectory[new_timepoints]
 
 def pelvis_norm(relevant_joints_datapoint):
-	return relevant_joints_datapoint[:, 1:] - relevant_joints_datapoint[:, 0].reshape(relevant_joints_datapoint.shape[0], 1, 3)
+	relevant_joints_datapoint[:, 1:] -= relevant_joints_datapoint[:, 0].reshape(relevant_joints_datapoint.shape[0], 1, 3)
+	return relevant_joints_datapoint
 
 def shoulder_norm(relevant_joints_datapoint):
 	relevant_joints_datapoint[:, 2:25] -= relevant_joints_datapoint[:, 1].reshape(relevant_joints_datapoint.shape[0], 1, 3)
-	relevant_joints_datapoint[:, 27:] -= relevant_joints_datapoint[:, 26].reshape(relevant_joints_datapoint.shape[0], 1, 3)
+	if len(relevant_joints_datapoint[0]) > 26:
+		relevant_joints_datapoint[:, 27:] -= relevant_joints_datapoint[:, 26].reshape(relevant_joints_datapoint.shape[0], 1, 3)
 	return relevant_joints_datapoint
 
 def wrist_norm(relevant_joints_datapoint):
@@ -36,9 +38,6 @@ def wrist_norm(relevant_joints_datapoint):
 
 		wristless_joints = np.delete(relevant_joints_datapoint, [0, 22], axis=1)
 		return wristless_joints
-	return relevant_joints_datapoint[:, 1:]
-
-		
 	return relevant_joints_datapoint
 
 def alternate_wrist_norm(relevant_joints_datapoint):
@@ -81,6 +80,9 @@ class GRAB_PreDataset(Dataset):
 
 		# Get number of files. 
 		self.total_length = len(self.filelist)
+
+		# Create environment names list
+		self.environment_names = ["GRAB" for _ in range(self.total_length)]
 
 		# Set downsampling frequency.
 		self.ds_freq = 16
@@ -292,13 +294,16 @@ class GRAB_PreDataset(Dataset):
 		for k, v in enumerate(self.arm_and_hand_joint_indices):
 			self.arm_and_hand_joint_indices[k] = np.where(self.joint_names==v)[0][0]
 
-		for i in range(self.object_indices.shape[0]):
-			self.object_indices[i] = len(self.arm_and_hand_joint_indices) + i
+		# for i in range(self.object_indices.shape[0]):
+			# self.object_indices[i] = len(self.arm_and_hand_joint_indices) + i
 
+		# self.arm_hand_object_indices = self.arm_and_hand_joint_indices
 
+		# Append zeros for object indices and fill when they're loaded
 		self.arm_hand_object_indices = np.zeros(len(self.arm_and_hand_joint_names) + 6)
 		self.arm_hand_object_indices[0:len(self.arm_and_hand_joint_names)] = self.arm_and_hand_joint_indices
-		self.arm_hand_object_indices[-6:] = self.object_indices
+
+		# self.arm_hand_object_indices[-6:] = self.object_indices
 		
 		
 	def subsample_relevant_joints(self, datapoint):
@@ -333,16 +338,17 @@ class GRAB_PreDataset(Dataset):
 			# Now actually load file. 
 			datapoint = np.load(v, allow_pickle=True)['body_joints']	
 
-			# Get object filepath
-			object_path = v.replace("GRAB_Joints", "grab").replace("_body_joints.npz", ".npz")
+			if 'Object' in self.args.data:
+				# Get object filepath
+				object_path = v.replace("GRAB_Joints", "grab").replace("_body_joints.npz", ".npz")
 
-			# Load object data
-			object_dict_raw = np.load(object_path, allow_pickle=True)
-			object_dict = object_dict_raw['object'].flatten()[0]
-			object_transl = object_dict['params']['transl']
-			object_orient = object_dict['params']['global_orient']
+				# Load object data
+				object_dict_raw = np.load(object_path, allow_pickle=True)
+				object_dict = object_dict_raw['object'].flatten()[0]
+				object_transl = object_dict['params']['transl']
+				object_orient = object_dict['params']['global_orient']
 
-			object_datapoint = np.concatenate((object_transl, object_orient), axis=1)
+				object_datapoint = np.concatenate((object_transl, object_orient), axis=1)
 
 		# Without normalizing object:
 			# Subsample relevant joints. 
@@ -355,14 +361,15 @@ class GRAB_PreDataset(Dataset):
 			reshaped_normalized_datapoint = normalized_relevant_joint_datapoint.reshape(normalized_relevant_joint_datapoint.shape[0],-1)
 
 			# Combine object + body joints
-			reshaped_datapoint_with_objects = np.concatenate((reshaped_normalized_datapoint, object_datapoint), axis=1)
+			if 'Object' in self.args.data:
+				# reshaped_normalized_datapoint = np.concatenate((reshaped_normalized_datapoint, object_datapoint), axis=1)
+				reshaped_normalized_datapoint[:, -6:] = object_datapoint
 
-			self.state_size = reshaped_datapoint_with_objects.shape[1]
-
+			self.state_size = reshaped_normalized_datapoint.shape[1]
 			# Subsample in time. 
 			number_of_timesteps = datapoint.shape[0]//self.ds_freq
 			# subsampled_data = resample(relevant_joints_datapoint, number_of_timesteps)
-			subsampled_data = resample(reshaped_datapoint_with_objects, number_of_timesteps)
+			subsampled_data = resample(reshaped_normalized_datapoint, number_of_timesteps)
 			
 			# Add subsampled datapoint to file. 
 			self.files.append(subsampled_data)            
@@ -375,7 +382,13 @@ class GRAB_PreDataset(Dataset):
 		np.save(os.path.join(self.dataset_directory, self.getname() + "_DataFile_BaseNormalize.npy"), self.file_array)
 		np.save(os.path.join(self.dataset_directory, self.getname() + "_OrderedFileList.npy"), self.filelist)
 
+	def get_state_size(self):
+		return self.state_size
+
 	def normalize(self, relevant_joints_datapoint):
+		# Supports single hand. Does not normalize object data.
+		if len(relevant_joints_datapoint) == 0:
+			return relevant_joints_datapoint
 		if self.args.position_normalization == 'pelvis':
 			return pelvis_norm(relevant_joints_datapoint)
 		elif self.args.position_normalization == 'shoulder':
@@ -494,6 +507,9 @@ class GRAB_Dataset(Dataset):
 
 		self.dataset_length = len(self.data_list)
 
+		# Create environment names list
+		self.environment_names = ["GRAB" for _ in range(self.dataset_length)]
+
 		if self.args.dataset_traj_length_limit>0:			
 			self.short_data_list = []
 			self.short_file_list = []
@@ -509,7 +525,12 @@ class GRAB_Dataset(Dataset):
 			self.dataset_length = len(self.data_list)
 			self.dataset_trajectory_lengths = np.array(self.dataset_trajectory_lengths)
 				
-		self.data_list_array = np.array(self.data_list)		
+		self.data_list_array = np.array(self.data_list)
+
+	def get_state_size(self):
+		if self.data_list is None or len(self.data_list)==0:
+			raise ValueError("Data list is empty. Cannot get state size.")
+		return self.data_list_array[0].shape[1]		
 
 	def getname(self):
 		return "GRAB"
@@ -530,7 +551,10 @@ class GRAB_Dataset(Dataset):
 		data_element = {}
 		data_element['is_valid'] = True
 		data_element['demo'] = self.data_list[index]
+		data_element['data_element'] = self.data_list[index]
 		data_element['file'] = self.filelist[index]
+		data_element['task-id'] = index	
+		data_element['task_id'] = index	
 
 		return data_element
 
@@ -685,7 +709,7 @@ class GRABArmHand_PreDataset(GRAB_PreDataset):
 									 'lip_bottom',
 									 'right_lip_3'])
 
-		self.arm_and_hand_joint_names = np.array([ #'pelvis',
+		self.arm_and_hand_joint_names = np.array([ 'pelvis',
 												'left_shoulder', # index 0
 												'left_elbow',
 												'left_collar',
@@ -735,7 +759,7 @@ class GRABArmHand_PreDataset(GRAB_PreDataset):
 												'right_ring',
 												'right_pinky'])
 
-		self.left_arm_and_hand_joint_names = np.array([ #'pelvis',
+		self.left_arm_and_hand_joint_names = np.array([ 'pelvis',
 												'left_shoulder',
 												'left_elbow',
 												'left_collar',
@@ -761,7 +785,7 @@ class GRABArmHand_PreDataset(GRAB_PreDataset):
 												'left_ring',
 												'left_pinky'])
 
-		self.right_arm_and_hand_joint_names = np.array([ #'pelvis',
+		self.right_arm_and_hand_joint_names = np.array([ 'pelvis',
 												'right_shoulder',
 												'right_elbow',
 												'right_collar',
@@ -805,6 +829,11 @@ class GRABArmHand_PreDataset(GRAB_PreDataset):
 		self.relevant_joint_indices = self.arm_and_hand_joint_indices.astype(int)
 
 		return datapoint[:, self.relevant_joint_indices]
+	
+	def normalize(self, relevant_joints_datapoint):
+		joints = super().normalize(relevant_joints_datapoint)
+		# Remove pelvis from joints, regardless of normalization type
+		return joints[1:]
 
 	def getname(self):
 		return "GRABArmHand"
@@ -824,7 +853,6 @@ class GRABHand_Dataset(GRAB_Dataset):
 	def getname(self):
 		return "GRABHand"
 
-	# FOR NOW:
 	def __getitem__(self, index):
 
 		data_element = super().__getitem__(index)
@@ -1234,7 +1262,7 @@ class GRABArmHandObject_PreDataset(GRAB_PreDataset):
 									 'lip_bottom',
 									 'right_lip_3'])
 
-		self.arm_and_hand_joint_names = np.array([ #'pelvis',
+		self.arm_and_hand_joint_names = np.array([ 'pelvis',
 												'left_shoulder', # index 0
 												'left_elbow',
 												'left_collar',
@@ -1284,7 +1312,7 @@ class GRABArmHandObject_PreDataset(GRAB_PreDataset):
 												'right_ring',
 												'right_pinky'])
 
-		self.left_arm_and_hand_joint_names = np.array([ #'pelvis',
+		self.left_arm_and_hand_joint_names = np.array([ 'pelvis',
 												'left_shoulder',
 												'left_elbow',
 												'left_collar',
@@ -1310,7 +1338,7 @@ class GRABArmHandObject_PreDataset(GRAB_PreDataset):
 												'left_ring',
 												'left_pinky'])
 
-		self.right_arm_and_hand_joint_names = np.array([ #'pelvis',
+		self.right_arm_and_hand_joint_names = np.array([ 'pelvis',
 												'right_shoulder',
 												'right_elbow',
 												'right_collar',

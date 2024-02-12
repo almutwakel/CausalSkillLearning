@@ -21,7 +21,7 @@ from Visualizers import BaxterVisualizer, SawyerVisualizer, FrankaVisualizer, To
 
 # from Visualizers import *
 # import TFLogger, DMP, RLUtils
-import DMP, RLUtils
+import DMP, RLUtils, math
 
 # Check if CUDA is available, set device to GPU if it is, otherwise use CPU.
 use_cuda = torch.cuda.is_available()
@@ -204,7 +204,7 @@ class PolicyManager_BaseClass():
 			else:
 				return sample_traj, sample_action_seq, concatenated_traj, old_concatenated_traj
 
-		elif self.args.data in global_data_list:
+		elif self.args.data in global_dataset_list:
 
 			# If we're imitating... select demonstrations from the particular task.
 			if self.args.setting=='imitation' and \
@@ -602,7 +602,7 @@ class PolicyManager_BaseClass():
 				if self.args.setting in ['learntsub','joint', 'queryjoint']:
 					
 					
-					input_dict, var_dict, eval_dict = self.run_iteration(0, j, return_dicts=True, train=False)
+					input_dict, var_dict = self.run_iteration(0, j, return_dicts=True, train=False)
 					latent_z = var_dict['latent_z_indices']
 					sample_trajs = input_dict['sample_traj']
 					data_element = input_dict['data_element']
@@ -1418,6 +1418,8 @@ class PolicyManager_BaseClass():
 		return [wandb.Image(image.transpose(1,2,0))]		
 
 	def return_wandb_gif(self, gif):
+		if not gif:
+			return None
 		return wandb.Video(gif.transpose((0,3,1,2)), fps=4, format='gif')
 
 	def corrupt_inputs(self, input):
@@ -1934,23 +1936,26 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			self.traj_length = self.args.traj_length			
 			self.conditional_info_size = 0
 			self.test_set_size = 40
-			# stat_dir_name = self.args.data
+			stat_dir_name = self.args.data
 
-			# if self.args.normalization=='meanvar':
-			# 	self.norm_sub_value = np.load("Statistics/{0}/{0}_Mean.npy".format(stat_dir_name))
-			# 	self.norm_denom_value = np.load("Statistics/{0}/{0}_Var.npy".format(stat_dir_name))
-			# elif self.args.normalization=='minmax':
-			# 	self.norm_sub_value = np.load("Statistics/{0}/{0}_Min.npy".format(stat_dir_name))
-			# 	self.norm_denom_value = np.load("Statistics/{0}/{0}_Max.npy".format(stat_dir_name)) - self.norm_sub_value
+			if self.args.normalization=='meanvar':
+				self.norm_sub_value = np.load("Statistics/{0}/{0}_Mean.npy".format(stat_dir_name))
+				self.norm_denom_value = np.load("Statistics/{0}/{0}_Var.npy".format(stat_dir_name))
+			elif self.args.normalization=='minmax':
+				self.norm_sub_value = np.load("Statistics/{0}/{0}_Min.npy".format(stat_dir_name))
+				self.norm_denom_value = np.load("Statistics/{0}/{0}_Max.npy".format(stat_dir_name)) - self.norm_sub_value
 		
 		elif self.args.data in ['GRABHand']:
 			
-			self.state_size = 120
-			self.state_dim = 120
+			# self.state_size = 120
+			# self.state_dim = 120
 
-			if self.args.single_hand in ['left', 'right']:
-				self.state_dim //= 2
-				self.state_size //= 2
+			# if self.args.single_hand in ['left', 'right']:
+			# 	self.state_dim //= 2
+			# 	self.state_size //= 2
+
+			self.state_size = self.dataset.get_state_size()
+			self.state_dim = self.state_size
 
 			self.input_size = 2*self.state_size
 			self.hidden_size = self.args.hidden_size
@@ -1958,32 +1963,38 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			self.traj_length = self.args.traj_length			
 			self.conditional_info_size = 0
 			self.test_set_size = 40
-			# stat_dir_name = self.args.data
+			stat_dir_name = self.args.data
 
-			# if self.args.normalization=='meanvar':
-			# 	self.norm_sub_value = np.load("Statistics/{0}/{0}_Mean.npy".format(stat_dir_name))
-			# 	self.norm_denom_value = np.load("Statistics/{0}/{0}_Var.npy".format(stat_dir_name))
-			# elif self.args.normalization=='minmax':
-			# 	self.norm_sub_value = np.load("Statistics/{0}/{0}_Min.npy".format(stat_dir_name))
-			# 	self.norm_denom_value = np.load("Statistics/{0}/{0}_Max.npy".format(stat_dir_name)) - self.norm_sub_value
-
+			if self.args.normalization=='meanvar':
+				self.norm_sub_value = np.load("Statistics/{0}/{0}_Mean.npy".format(stat_dir_name))
+				self.norm_denom_value = np.load("Statistics/{0}/{0}_Var.npy".format(stat_dir_name))
+			elif self.args.normalization=='minmax':
+				self.norm_sub_value = np.load("Statistics/{0}/{0}_Min.npy".format(stat_dir_name))
+				self.norm_denom_value = np.load("Statistics/{0}/{0}_Max.npy".format(stat_dir_name)) - self.norm_sub_value
+				self.norm_denom_value[self.norm_denom_value==0.]=1.
+				
 			# Modify to zero out for now..
 			if self.args.skip_wrist:
 				self.norm_sub_value[:3] = 0.
 				self.norm_denom_value[:3] = 1.
+			
+			self.norm_denom_value[self.norm_denom_value==0.]=1.
 		
 		elif self.args.data in ['GRABArmHand']:
 			
-			if self.args.position_normalization == 'pelvis':
-				self.state_size = 144
-				self.state_dim = 144
+			self.state_size = self.dataset.get_state_size()
+			self.state_dim = self.state_size
 
-				if self.args.single_hand in ['left', 'right']:
-					self.state_dim //= 2
-					self.state_size //= 2
-			else:
-				self.state_size = 147
-				self.state_dim = 147
+			# if self.args.position_normalization == 'pelvis':
+			# 	self.state_size = 144
+			# 	self.state_dim = 144
+
+			# 	if self.args.single_hand in ['left', 'right']:
+			# 		self.state_dim //= 2
+			# 		self.state_size //= 2
+			# else:
+			# 	self.state_size = 147
+			# 	self.state_dim = 147
 			self.input_size = 2*self.state_size
 			self.hidden_size = self.args.hidden_size
 			self.output_size = self.state_size
@@ -1992,17 +2003,21 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			self.test_set_size = 40
 			# stat_dir_name = self.args.data
 
-			# if self.args.normalization=='meanvar':
-			# 	self.norm_sub_value = np.load("Statistics/{0}/{0}_Mean.npy".format(stat_dir_name))
-			# 	self.norm_denom_value = np.load("Statistics/{0}/{0}_Var.npy".format(stat_dir_name))
-			# elif self.args.normalization=='minmax':
-			# 	self.norm_sub_value = np.load("Statistics/{0}/{0}_Min.npy".format(stat_dir_name))
-			# 	self.norm_denom_value = np.load("Statistics/{0}/{0}_Max.npy".format(stat_dir_name)) - self.norm_sub_value
+			if self.args.normalization=='meanvar':
+				self.norm_sub_value = np.load("Statistics/{0}/{0}_Mean.npy".format(stat_dir_name))
+				self.norm_denom_value = np.load("Statistics/{0}/{0}_Var.npy".format(stat_dir_name))
+			elif self.args.normalization=='minmax':
+				self.norm_sub_value = np.load("Statistics/{0}/{0}_Min.npy".format(stat_dir_name))
+				self.norm_denom_value = np.load("Statistics/{0}/{0}_Max.npy".format(stat_dir_name)) - self.norm_sub_value
+				self.norm_denom_value[self.norm_denom_value==0.]=1.
 		
 		elif self.args.data in ['GRABArmHandObject']:
 			
-			self.state_size = 96
-			self.state_dim = 96
+			self.state_size = self.dataset.get_state_size()
+			self.state_dim = self.state_size
+
+			# self.state_size = 96
+			# self.state_dim = 96
 
 			self.input_size = 2*self.state_size
 			self.hidden_size = self.args.hidden_size
@@ -2012,12 +2027,13 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			self.test_set_size = 40
 			# stat_dir_name = self.args.data
 
-			# if self.args.normalization=='meanvar':
-			# 	self.norm_sub_value = np.load("Statistics/{0}/{0}_Mean.npy".format(stat_dir_name))
-			# 	self.norm_denom_value = np.load("Statistics/{0}/{0}_Var.npy".format(stat_dir_name))
-			# elif self.args.normalization=='minmax':
-			# 	self.norm_sub_value = np.load("Statistics/{0}/{0}_Min.npy".format(stat_dir_name))
-			# 	self.norm_denom_value = np.load("Statistics/{0}/{0}_Max.npy".format(stat_dir_name)) - self.norm_sub_value
+			if self.args.normalization=='meanvar':
+				self.norm_sub_value = np.load("Statistics/{0}/{0}_Mean.npy".format(stat_dir_name))
+				self.norm_denom_value = np.load("Statistics/{0}/{0}_Var.npy".format(stat_dir_name))
+			elif self.args.normalization=='minmax':
+				self.norm_sub_value = np.load("Statistics/{0}/{0}_Min.npy".format(stat_dir_name))
+				self.norm_denom_value = np.load("Statistics/{0}/{0}_Max.npy".format(stat_dir_name)) - self.norm_sub_value
+				self.norm_denom_value[self.norm_denom_value==0.]=1.
 
 		elif self.args.data in ['GRABObject']:
 			
@@ -2031,12 +2047,13 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			self.test_set_size = 40
 			# stat_dir_name = self.args.data
 
-			# if self.args.normalization=='meanvar':
-			# 	self.norm_sub_value = np.load("Statistics/{0}/{0}_Mean.npy".format(stat_dir_name))
-			# 	self.norm_denom_value = np.load("Statistics/{0}/{0}_Var.npy".format(stat_dir_name))
-			# elif self.args.normalization=='minmax':
-			# 	self.norm_sub_value = np.load("Statistics/{0}/{0}_Min.npy".format(stat_dir_name))
-			# 	self.norm_denom_value = np.load("Statistics/{0}/{0}_Max.npy".format(stat_dir_name)) - self.norm_sub_value
+			if self.args.normalization=='meanvar':
+				self.norm_sub_value = np.load("Statistics/{0}/{0}_Mean.npy".format(stat_dir_name))
+				self.norm_denom_value = np.load("Statistics/{0}/{0}_Var.npy".format(stat_dir_name))
+			elif self.args.normalization=='minmax':
+				self.norm_sub_value = np.load("Statistics/{0}/{0}_Min.npy".format(stat_dir_name))
+				self.norm_denom_value = np.load("Statistics/{0}/{0}_Max.npy".format(stat_dir_name)) - self.norm_sub_value
+				self.norm_denom_value[self.norm_denom_value==0.]=1.
 		
 		elif self.args.data in ['DAPG']:
 			
@@ -3481,28 +3498,8 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		elif self.args.data in ['Roboturk','OrigRoboturk','FullRoboturk','OrigRoboMimic','RoboMimic']:
 			self.state_dim = 8
 			self.rollout_timesteps = self.traj_length
-		elif self.args.data in ['GRAB']:
-			self.state_dim = 24
-			self.rollout_timesteps = self.traj_length
-		elif self.args.data in ['GRABArmHand']:
-			if self.args.position_normalization == 'pelvis':
-				self.state_dim = 144
-				if self.args.single_hand in ['left', 'right']:
-					self.state_dim //= 2
-			else:
-				self.state_dim = 147
-			self.rollout_timesteps = self.traj_length
-		elif self.args.data in ['GRABArmHandObject']:
-			self.state_size = 96
-			self.state_dim = 96
-			self.rollout_timesteps = self.traj_length
-		elif self.args.data in ['GRABObject']:
-			self.state_dim = 6
-			self.rollout_timesteps = self.traj_length
-		elif self.args.data in ['GRABHand']:
-			self.state_dim = 120
-			if self.args.single_hand in ['left', 'right']:
-				self.state_dim //= 2
+		elif self.args.data in ['GRAB', 'GRABHand', 'GRABArmHand', 'GRABArmHandObject']:
+			self.state_dim = self.dataset.get_state_size()
 			self.rollout_timesteps = self.traj_length
 		elif self.args.data in ['DAPG']:
 			self.state_dim = 51
@@ -3844,18 +3841,16 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 
 		# # for i in range(self.N//self.args.batch_size+1, 32)
 		# for i in range(0, self.N, self.args.batch_size):
-		for i in range(self.N//self.args.batch_size+1):
+    # for i in range(math.ceil(min(self.N, len(self.dataset))/self.args.batch_size)):
+    for i in range(math.ceil(self.N/self.args.batch_size)):
 
-			# Mapped index
-			# 46//32 == 2
-			number_batches_for_dataset = (len(self.dataset)//self.args.batch_size)+1
+      number_batches_for_dataset = math.ceil(len(self.dataset)/self.args.batch_size)
 			j = i % number_batches_for_dataset
 			# j = 0, 1, 0, 1, 0, 1,
 
 			########################################
 			# (1) Encoder trajectory. 
 			########################################
-
 			latent_z, sample_trajs, _, data_element = self.run_iteration(0, j*self.args.batch_size, return_z=True, and_train=False)
 
 			########################################
@@ -4889,12 +4884,15 @@ class PolicyManager_Joint(PolicyManager_BaseClass):
 		
 		elif self.args.data in ['GRABHand']:
 			
-			self.state_size = 120
-			self.state_dim = 120
+			# self.state_size = 120
+			# self.state_dim = 120
 
-			if self.args.single_hand in ['left', 'right']:
-				self.state_dim //= 2
-				self.state_size //= 2
+			# if self.args.single_hand in ['left', 'right']:
+			# 	self.state_dim //= 2
+			# 	self.state_size //= 2
+
+			self.state_size = self.dataset.get_state_size()
+			self.state_dim = self.state_size
 			
 			self.input_size = 2*self.state_size
 			self.hidden_size = self.args.hidden_size
@@ -4917,16 +4915,17 @@ class PolicyManager_Joint(PolicyManager_BaseClass):
 		
 		elif self.args.data in ['GRABArmHand']:
 			
+			self.state_size = self.dataset.get_state_size()
+			self.state_dim = self.state_size
+			# self.state_size = 144
+			# self.state_dim = 144
+			# if self.args.single_hand in ['left', 'right']:
+			# 	self.state_size //= 2
+			# 	self.state_dim //= 2
 
-			self.state_size = 144
-			self.state_dim = 144
-			if self.args.single_hand in ['left', 'right']:
-				self.state_size //= 2
-				self.state_dim //= 2
-
-			if self.args.position_normalization != 'pelvis':
-				self.state_size += 3
-				self.state_dim += 3
+			# if self.args.position_normalization != 'pelvis':
+			# 	self.state_size += 3
+			# 	self.state_dim += 3
 			
 			self.input_size = 2*self.state_size
 			self.hidden_size = self.args.hidden_size
@@ -4949,8 +4948,11 @@ class PolicyManager_Joint(PolicyManager_BaseClass):
 
 		elif self.args.data in ['GRABArmHandObject']:
 			
-			self.state_size = 96
-			self.state_dim = 96
+			# self.state_size = 96
+			# self.state_dim = 96
+
+			self.state_size = self.dataset.get_state_size()
+			self.state_dim = self.state_size
 		
 			self.input_size = 2*self.state_size
 			self.hidden_size = self.args.hidden_size
@@ -5876,7 +5878,7 @@ class PolicyManager_Joint(PolicyManager_BaseClass):
 		# self.total_variational_loss = (self.reinforce_variational_loss.sum() + self.args.kl_weight*kl_divergence.squeeze(1).sum()).sum()
 		
 		# self.total_variational_loss = (self.reinforce_variational_loss + self.args.kl_weight*kl_divergence.squeeze(1)).mean()
-		self.total_variational_loss = (self.reinforce_variational_loss + self.kl_weight*kl_divergence.squeeze(1)).sum()/(self.batch_mask[:-1].sum())
+		self.total_variational_loss = (self.reinforce_variational_loss + self.args.kl_weight*kl_divergence.squeeze(1)).sum()/(self.batch_mask[:-1].sum())
 
 		######################################################
 		# Set other losses, subpolicy, latent, and prior.
@@ -5992,7 +5994,7 @@ class PolicyManager_Joint(PolicyManager_BaseClass):
 
 		############# (0) #############
 		# Get sample we're going to train on. Single sample as of now.
-		_ , sample_action_seq, concatenated_traj, old_concatenated_traj = self.collect_inputs(i)
+		_ , sample_action_seq, concatenated_traj, old_concatenated_traj, data_element = self.collect_inputs(i)
 				
 		if self.args.batch_size>1: 
 			self.selected_index = 0
@@ -6261,9 +6263,11 @@ class PolicyManager_Joint(PolicyManager_BaseClass):
 
 		if input_dictionary is None:
 			input_dictionary = {}
+
 			input_dictionary['sample_traj'], input_dictionary['sample_action_seq'], \
 			input_dictionary['concatenated_traj'], input_dictionary['old_concatenated_traj'], input_dictionary['data_element'] = \
 				self.collect_inputs(i, special_indices=special_indices, called_from_train=True, bucket_index=bucket_index)
+
 			if self.args.task_discriminability or self.args.task_based_supervision:
 				input_dictionary['sample_task_id'] = self.input_task_id
 
