@@ -1,3 +1,4 @@
+############################
 # Copyright (c) Facebook, Inc. and its affiliates.
 # All rights reserved.
 
@@ -10,6 +11,7 @@ from headers import *
 from PolicyNetworks import *
 from RL_headers import *
 from PPO_Utilities import PPOBuffer
+# from RealWorldLabels import label_dict
 from Visualizers import BaxterVisualizer, SawyerVisualizer, FrankaVisualizer, ToyDataVisualizer, \
 	GRABVisualizer, GRABHandVisualizer, GRABArmHandVisualizer, DAPGVisualizer, \
 	RoboturkObjectVisualizer, RoboturkRobotObjectVisualizer,\
@@ -35,7 +37,9 @@ global_dataset_list = ['MIME','OldMIME','Roboturk','OrigRoboturk','FullRoboturk'
 			'RoboturkMultiObjets', 'RoboturkRobotMultiObjects', \
 			'MOMARTPreproc', 'MOMART', 'MOMARTObject', 'MOMARTRobotObject', 'MOMARTRobotObjectFlat', \
 			'FrankaKitchenPreproc', 'FrankaKitchen', 'FrankaKitchenObject', 'FrankaKitchenRobotObject', \
-			'RealWorldRigid', 'RealWorldRigidRobot', 'RealWorldRigidJEEF', 'NDAX', 'NDAXMotorAngles']
+			'RealWorldRigid', 'RealWorldRigidRobot', 'RealWorldRigidJEEF', 'RealWorldRigidJEEFAbsRelObj', \
+			'RealWorldRigidHuman', \
+			'NDAX', 'NDAXMotorAngles', 'NDAXv2']
 
 class PolicyManager_BaseClass():
 
@@ -130,7 +134,9 @@ class PolicyManager_BaseClass():
 		elif self.args.data in ['MOMARTRobotObject', 'MOMARTRobotObjectFlat']:			
 			if not hasattr(self, 'visualizer'):
 				self.visualizer = FetchMOMARTVisualizer(args=self.args)
-		elif self.args.data in ['RealWorldRigid', 'NDAX', 'NDAXMotorAngles']:
+		elif self.args.data in ['RealWorldRigid', 'NDAX', 'NDAXMotorAngles', 'NDAXv2', \
+						  'RealWorldRigidRobot', 'RealWorldRigidJEEF', 'RealWorldRigidJEEFAbsRelObj',\
+							'RealWorldRigidHuman']:
 			self.visualizer = DatasetImageVisualizer(args=self.args)
 		else:
 			self.visualizer = ToyDataVisualizer()
@@ -468,7 +474,10 @@ class PolicyManager_BaseClass():
 		elif self.args.data in ['MOMARTRobotObject', 'MOMARTRobotObjectFlat']:
 			if not hasattr(self, 'visualizer'):
 				self.visualizer = FetchMOMARTVisualizer(args=self.args)
-		elif self.args.data in ['RealWorldRigid', 'NDAX', 'NDAXMotorAngles']:
+		# elif self.args.data in ['RealWorldRigid', 'NDAX', 'NDAXMotorAngles', 'NDAXv2']:
+		elif self.args.data in ['RealWorldRigid', 'NDAX', 'NDAXMotorAngles', 'NDAXv2', \
+						  'RealWorldRigidRobot', 'RealWorldRigidJEEF', 'RealWorldRigidJEEFAbsRelObj',\
+							'RealWorldRigidHuman']:
 			self.visualizer = DatasetImageVisualizer(args=self.args)
 		else: 
 			self.visualizer = ToyDataVisualizer()
@@ -618,7 +627,7 @@ class PolicyManager_BaseClass():
 
 					#######################
 					# Create env for batch.
-					if not(self.args.data in ['RealWorldRigid', 'NDAX', 'NDAXMotorAngles']):
+					if not(self.args.data in ['RealWorldRigid', 'RealWorldRigidHuman', 'NDAX', 'NDAXMotorAngles','NDAXv2']):
 						self.per_batch_env_management(data_element[0])
 
 					for b in range(self.args.batch_size):
@@ -760,7 +769,7 @@ class PolicyManager_BaseClass():
 		self.write_results_HTML(plots_or_gif='Plot')
 		
 		viz_embeddings = True
-		if (self.args.data in ['RealWorldRigid', 'RealWorldRigidRobot']) and (self.args.images_in_real_world_dataset==0):
+		if (self.args.data in ['RealWorldRigid', 'RealWorldRigidRobot', 'RealWorldRigidHuman','NDAXv2']) and (self.args.images_in_real_world_dataset==0):
 			viz_embeddings = False
 
 		if viz_embeddings:
@@ -1082,7 +1091,7 @@ class PolicyManager_BaseClass():
 			task_id = None
 			env_name = None
 		else:			
-			if self.args.data in ['NDAX', 'NDAXMotorAngles']:
+			if self.args.data in ['NDAX', 'NDAXMotorAngles','NDAXv2']:
 				task_id = indexed_data_element['task_id']
 			else:
 				task_id = indexed_data_element['task-id']
@@ -1144,25 +1153,27 @@ class PolicyManager_BaseClass():
 		# For now
 		##############################
 
-		if self.args.data in ['RealWorldRigid'] and self.args.images_in_real_world_dataset:
+		if self.args.data in ['RealWorldRigid', 'NDAXv2', 'RealWorldRigidHuman'] and self.args.images_in_real_world_dataset:
 			# This should already be segmented to the right start and end point...		
 			self.ground_truth_gif = self.visualizer.visualize_prerendered_gif(indexed_data_element['subsampled_images'], gif_path=self.dir_name, gif_name="Traj_{0}_GIF_GT.gif".format(str(i).zfill(3)))
 		else:			
 			self.ground_truth_gif = self.visualizer.visualize_joint_trajectory(unnorm_gt_trajectory, gif_path=self.dir_name, gif_name="Traj_{0}_GIF_GT.gif".format(str(i).zfill(3)), return_and_save=True, end_effector=self.args.ee_trajectories, task_id=env_name)
 
-		# Set plot scaling
-			# For the NDAX data: Use the dimensions 7-9 for the hand position. 
-		plot_scale = self.norm_denom_value[6:9].max()
-		# plot_scale = self.norm_denom_value.max()
+		# First set indices to plot. 
+		if self.args.plot_index_min==-1 and self.args.plot_index_max==-1:
+			indices = np.arange(0,unnorm_gt_trajectory.shape[1])
+		else:
+			indices = np.arange(self.args.plot_index_min, self.args.plot_index_max)
+
+		# Set plot scaling. 
+		# plot_scale = self.norm_denom_value[6:].max()
+		plot_scale = self.norm_denom_value[indices].max()
 
 		# Also plotting trajectory against time. 
-		plt.close()
-		
-		# For the NDAX data: USe the first 6 dimensions for the motor angles.
-		# plt.plot(range(unnorm_gt_trajectory.shape[0]),unnorm_gt_trajectory[:,:7])
-		# For the NDAX data: Use the dimensions 7-9 for the hand position. 
-		plt.plot(range(unnorm_gt_trajectory.shape[0]),unnorm_gt_trajectory[:,6:9])
-		# plt.plot(range(unnorm_gt_trajectory.shape[0]),unnorm_gt_trajectory)
+		plt.close()		
+		# plt.plot(range(unnorm_gt_trajectory.shape[0]),unnorm_gt_trajectory[:,6:])
+		plt.plot(range(unnorm_gt_trajectory.shape[0]),unnorm_gt_trajectory[:,indices])
+
 		ax = plt.gca()
 		ax.set_ylim([-plot_scale, plot_scale])
 		plt.savefig(os.path.join(self.dir_name,"Traj_{0}_Plot_GT.png".format(str(i).zfill(3))))
@@ -1174,13 +1185,9 @@ class PolicyManager_BaseClass():
 
 		# Also plotting trajectory against time. 
 		plt.close()
+		# plt.plot(range(unnorm_pred_trajectory.shape[0]),unnorm_pred_trajectory[:,6:])
+		plt.plot(range(unnorm_pred_trajectory.shape[0]),unnorm_pred_trajectory[:,indices])
 
-		# For the NDAX data: USe the first 6 dimensions for the motor angles.
-		# plt.plot(range(unnorm_pred_trajectory.shape[0]),unnorm_pred_trajectory[:,:7])
-		# For the NDAX data: Use the dimensions 7-9 for the hand position. 
-		plt.plot(range(unnorm_pred_trajectory.shape[0]),unnorm_pred_trajectory[:,6:9])
-		# Otherwise use all.
-		# plt.plot(range(unnorm_pred_trajectory.shape[0]),unnorm_pred_trajectory)
 		ax = plt.gca()
 		ax.set_ylim([-plot_scale, plot_scale])
 
@@ -1305,19 +1312,25 @@ class PolicyManager_BaseClass():
 		print("Time taken to write this embedding in HTML: ",t2-t1)
 		# print("Time taken to save the animation object: ",t3-t2)
 
-	def get_robot_embedding(self, return_tsne_object=False, perplexity=None):
+	def get_robot_embedding(self, return_tsne_object=False, perplexity=None, latent_z=None):
 
 		# # Mean and variance normalize z.
 		# mean = self.latent_z_set.mean(axis=0)
 		# std = self.latent_z_set.std(axis=0)
 		# normed_z = (self.latent_z_set-mean)/std
-		normed_z = self.latent_z_set
+
+		if latent_z is None:
+			normed_z = self.latent_z_set
+		else:
+			normed_z = latent_z
 
 		if perplexity is None:
 			perplexity = self.args.perplexity
 		
 		print("Perplexity: ", perplexity)
 
+
+		# tSNE is a dimensionality reduction method, usually applied to data with very high dimensionalities
 		tsne = skl_manifold.TSNE(n_components=2,random_state=0,perplexity=perplexity)
 		embedded_zs = tsne.fit_transform(normed_z)
 
@@ -1342,7 +1355,14 @@ class PolicyManager_BaseClass():
 		# Good spaced out highres parameters: 
 		matplotlib.rcParams['figure.figsize'] = [40, 40]			
 		# zoom_factor = 0.3
-		zoom_factor=0.25
+		# zoom_factor=0.25
+
+		# Special parameters used for NDAXv2 dataset
+		# zoom_factor = 0.6
+		# zoom_factor = 0.5
+
+		# Visualizing more of the images by making them smaller..
+		zoom_factor = 0.3
 
 		# Set this parameter to make sure we don't drop frames.
 		matplotlib.rcParams['animation.embed_limit'] = 2**128
@@ -1351,7 +1371,8 @@ class PolicyManager_BaseClass():
 		fig, ax = plt.subplots()
 
 		# number_samples = 400
-		number_samples = self.N		
+		# number_samples = self.N	
+		number_samples = self.args.N_trajectories_to_visualize
 
 		# Create a scatter plot of the embedding itself. The plot does not seem to work without this. 
 		ax.scatter(scaled_embedded_zs[:number_samples,0],scaled_embedded_zs[:number_samples,1])
@@ -2320,8 +2341,8 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 					# self.norm_denom_value will get divided by scale.
 					self.norm_denom_value /= self.args.state_scale_factor
 					# Manually make sure quaternion dims are unscaled.
-					self.norm_denom_value[10:14] = 1.
-					self.norm_denom_value[17:] = 1.
+					self.norm_denom_value[10:14] = 1. # first obj
+					self.norm_denom_value[17:] = 1.   # second obj
 					self.norm_sub_value[10:14] = 0.
 					self.norm_sub_value[17:] = 0.
 
@@ -2336,11 +2357,32 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			# Manually make sure quaternion dims are unscaled.
 			# Now have to do this for EEF, and two objects. 
 			self.norm_denom_value[10:14] = 1.
-			self.norm_denom_value[17:20] = 1.
+			self.norm_denom_value[17:21] = 1.
 			self.norm_denom_value[24:] = 1.
 			self.norm_sub_value[10:14] = 0.
-			self.norm_sub_value[17:20] = 0.
+			self.norm_sub_value[17:21] = 0.
 			self.norm_sub_value[24:] = 0.
+
+		elif self.args.data in ['RealWorldRigidJEEFAbsRelObj']:
+
+			self.state_size = 28+14
+			self.state_dim = 28+14
+
+			# self.norm_sub_value will remain unmodified. 
+			# self.norm_denom_value will get divided by scale.
+			self.norm_denom_value /= self.args.state_scale_factor
+			# Manually make sure quaternion dims are unscaled.
+			# Now have to do this for EEF, and two objects. 
+			self.norm_denom_value[10:14] = 1.
+			self.norm_denom_value[17:21] = 1.
+			self.norm_denom_value[24:28] = 1.
+			self.norm_denom_value[31:35] = 1.
+			self.norm_denom_value[38:] = 1.
+			self.norm_sub_value[10:14] = 0.
+			self.norm_sub_value[17:21] = 0.
+			self.norm_sub_value[24:28] = 0.
+			self.norm_sub_value[31:35] = 0.
+			self.norm_sub_value[38:] = 0.
 
 		elif self.args.data in ['NDAX']:
 
@@ -2351,6 +2393,20 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			self.norm_sub_value[10:] = 0.
 			self.norm_denom_value[10:] = 1.
 
+		elif self.args.data in ['NDAXv2']:
+
+			self.state_size = 28+6
+			self.state_dim = 28+6
+
+			# Set orientation to be unnormalized
+			# Remember, [0,6) motor angles, [6,9) shoulder pos, [9,13) shoulder orientation,
+			# 								[13, 16) elbow pos, [16, 20) elbow orientation,
+			# 								[20, 23) wrist pos, [23, 27) wrist orientation,
+			# 								[27, 30) object pos, [30, 34) object orientation,
+			orientation_indices = np.concatenate([np.arange(9,13), np.arange(16,20), np.arange(23,27), np.arange(30,34)])
+			self.norm_sub_value[orientation_indices] = 0.
+			self.norm_denom_value[orientation_indices] = 1.			
+
 		elif self.args.data in ['NDAXMotorAngles']:
 
 			self.state_size = 6
@@ -2360,14 +2416,28 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			self.norm_denom_value = self.norm_denom_value[:6]
 			self.norm_sub_value = self.norm_sub_value[:6]
 
-
 		elif self.args.data in ['RealWorldRigidHuman']:
 
-			self.state_size = 77
-			self.state_dim = 77
-			
-			# Set orientation dimensions to be unnormalized.
-			
+			self.state_size = 53
+			self.state_dim = 53			
+			# set the last few elements of data to be unnoramlized, they're empty for now.. 
+
+			# Hand orientation. 
+			self.norm_denom_value[21:25] = 1.
+			self.norm_sub_value[21:25] = 0. 
+
+			# Object 1 Orientation:
+			self.norm_denom_value[28:32] = 1.
+			self.norm_sub_value[28:32] = 0. 
+
+			# Object 2 Orientation. 
+			self.norm_denom_value[35:39] = 1.
+			self.norm_sub_value[35:39] = 0. 
+
+			# Padded dimensions. 
+			self.norm_denom_value[-14:] = 1.
+			self.norm_sub_value[-14:] = 0.
+
 
 		self.input_size = 2*self.state_size
 		self.hidden_size = self.args.hidden_size
@@ -2387,6 +2457,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		self.decay_epochs = self.args.epsilon_over
 		self.decay_counter = self.decay_epochs*(len(self.dataset)//self.args.batch_size+1)
 		self.variance_decay_counter = self.args.policy_variance_decay_over*(len(self.dataset)//self.args.batch_size+1)
+		self.z_distance_threshold_decay_counter = self.args.z_distance_threshold_decay_over*(len(self.dataset)//self.args.batch_size+1)
 		
 		if self.args.kl_schedule:
 			self.kl_increment_epochs = self.args.kl_increment_epochs
@@ -2403,6 +2474,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		self.decay_rate = (self.initial_epsilon-self.final_epsilon)/(self.decay_counter)	
 		self.linear_variance_decay_rate = (self.args.initial_policy_variance - self.args.final_policy_variance)/(self.variance_decay_counter)
 		self.quadratic_variance_decay_rate = (self.args.initial_policy_variance - self.args.final_policy_variance)/(self.variance_decay_counter**2)
+		self.linear_z_distance_threshold_decay_rate = (self.args.initial_z_distance_threshold - self.args.final_z_distance_threshold)/(self.z_distance_threshold_decay_counter)
 
 	def create_networks(self):
 		
@@ -2480,8 +2552,11 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 
 			# Annealing epsilon and policy variance.
 			if counter<self.decay_counter:
+
+				# Epsilon
 				self.epsilon = self.initial_epsilon-self.decay_rate*counter
 				
+				# Variance Annealing. 
 				if self.args.variance_mode in ['Constant']:
 					self.policy_variance_value = self.args.variance_value
 				elif self.args.variance_mode in ['LinearAnnealed']:
@@ -2489,13 +2564,24 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 				elif self.args.variance_mode in ['QuadraticAnnealed']:
 					self.policy_variance_value = self.args.final_policy_variance + self.quadratic_variance_decay_rate*((counter-self.variance_decay_counter)**2)				
 
+				# Aux Z_Env effect distance threshold 
+				self.auxillary_z_env_effect_distance_threshold = self.args.initial_z_distance_threshold - self.linear_z_distance_threshold_decay_rate*counter
+
 			else:
+
+				# Epsilon
 				self.epsilon = self.final_epsilon
+
+				# Variance Annealing. 
 				if self.args.variance_mode in ['Constant']:
 					self.policy_variance_value = self.args.variance_value
 				elif self.args.variance_mode in ['LinearAnnealed', 'QuadraticAnnealed']:
 					self.policy_variance_value = self.args.final_policy_variance
+				
+				# Aux Z_Env effect distance threshold 
+				self.auxillary_z_env_effect_distance_threshold = self.args.final_z_distance_threshold
 		else:
+
 			self.epsilon = self.final_epsilon
 			# self.policy_variance_value = self.args.final_policy_variance
 			
@@ -2505,20 +2591,32 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		# print("embed in set epoch")
 		# embed()
 
-		# Set KL weight. 
-		self.set_kl_weight(counter)		
+		# Set auxillary loss weight and KL weight. 
+		self.set_aux_loss_weights(counter)		
 
-	def set_kl_weight(self, counter):
+	def set_aux_loss_weights(self, counter):
 		
+		# We're also going to use this to schedule the auxillary loss. 
+
 		# Monotonic KL increase.
 		if self.args.kl_schedule=='Monotonic':
+
 			if counter>self.kl_begin_increment_counter:
 				if (counter-self.kl_begin_increment_counter)<self.kl_increment_counter:
 					self.kl_weight = self.args.initial_kl_weight + self.kl_increment_rate*counter
 				else:
 					self.kl_weight = self.args.final_kl_weight
+				
+				self.aux_env_effect_z_loss_weight = self.args.auxillary_z_env_effect_z_loss_weight
+				self.aux_env_effect_traj_loss_weight = self.args.auxillary_env_effect_traj_loss_weight
+				self.aux_task_based_loss_weight = self.args.task_based_aux_loss_weight
 			else:
 				self.kl_weight = self.args.initial_kl_weight
+
+				# If we are still in the initial phase of training, don't use the aux_zenv_loss_weight or the task based aux loss.
+				self.aux_env_effect_traj_loss_weight = 0.
+				self.aux_env_effect_z_loss_weight = 0.
+				self.aux_task_based_loss_weight = 0.				
 
 		# Cyclic KL.
 		elif self.args.kl_schedule=='Cyclic':
@@ -2546,7 +2644,9 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		# No Schedule. 
 		else:
 			self.kl_weight = self.args.kl_weight
-
+			self.aux_env_effect_z_loss_weight = self.args.auxillary_z_env_effect_z_loss_weight
+			self.aux_env_effect_traj_loss_weight = self.args.auxillary_env_effect_traj_loss_weight
+			self.aux_task_based_loss_weight = self.args.task_based_aux_loss_weight
 		# Adding branch for cyclic KL weight.		
 
 	def visualize_trajectory(self, traj, no_axes=False):
@@ -2572,26 +2672,46 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		
 		# log_dict['Subpolicy Loglikelihood'] = loglikelihood.mean()
 		log_dict = {'Subpolicy Loglikelihood': loglikelihood.mean(), 'Total Loss': self.total_loss.mean(), 'Encoder KL': self.encoder_KL.mean(), 'KL Weight': self.kl_weight}
+
 		if self.args.relative_state_reconstruction_loss_weight>0.:
 			log_dict['Unweighted Relative State Recon Loss'] = self.unweighted_relative_state_reconstruction_loss
 			log_dict['Relative State Recon Loss'] = self.relative_state_reconstruction_loss
 			log_dict['Auxillary Loss'] = self.aux_loss
+
 		if self.args.task_based_aux_loss_weight>0.:
 			log_dict['Unweighted Task Based Auxillary Loss'] = self.unweighted_task_based_aux_loss
 			log_dict['Task Based Auxillary Loss'] = self.task_based_aux_loss
 			log_dict['Auxillary Loss'] = self.aux_loss
+
 		if self.args.relative_state_phase_aux_loss_weight>0.:
 			log_dict['Unweighted Relative Phase Auxillary Loss'] = self.unweighted_relative_state_phase_aux_loss
 			log_dict['Relative Phase Auxillary Loss'] = self.relative_state_phase_aux_loss
 			log_dict['Auxillary Loss'] = self.aux_loss
+
 		if self.args.cummulative_computed_state_reconstruction_loss_weight>0.:
 			log_dict['Unweighted Cummmulative Computed State Reconstruction Loss'] = self.unweighted_cummulative_computed_state_reconstruction_loss
 			log_dict['Cummulative Computed State Reconstruction Loss'] = self.cummulative_computed_state_reconstruction_loss
+
 		if self.args.teacher_forced_state_reconstruction_loss_weight>0.:
 			log_dict['Unweighted Teacher Forced State Reconstruction Loss'] = self.unweighted_teacher_forced_state_reconstruction_loss
 			log_dict['Teacher Forced State Reconstruction Loss'] = self.teacher_forced_state_reconstruction_loss
+
 		if self.args.cummulative_computed_state_reconstruction_loss_weight>0. or self.args.teacher_forced_state_reconstruction_loss_weight>0.:
 			log_dict['State Reconstruction Loss'] = self.absolute_state_reconstruction_loss
+
+		if self.args.auxillary_z_env_effect_z_loss_weight>0.:
+			log_dict['Auxillary Z_Env Loss Positive Component'] = self.masked_aux_z_env_loss_positive_component
+			log_dict['Auxillary Z_Env Loss Negative Component'] = self.masked_aux_z_env_loss_negative_component
+			log_dict['Unweighted Auxillary Z_Env Loss'] = self.unweighted_auxillary_z_env_effect_z_loss
+			log_dict['Auxillary Z_Env Loss'] = self.auxillary_z_env_effect_z_loss
+			log_dict['Z Env Distance Threshold'] = self.auxillary_z_env_effect_distance_threshold
+
+		if self.args.auxillary_env_effect_traj_loss_weight>0. or self.args.auxillary_z_env_effect_z_loss_weight>0.:
+			log_dict['Auxillary Env Effect Traj Loss Positive Component'] = self.masked_aux_env_effect_traj_loss_positive_component
+			log_dict['Auxillary Env Effect Traj Loss Negative Component'] = self.masked_aux_env_effect_traj_loss_negative_component
+			log_dict['Unweighted Auxillary Env Effect Traj Loss'] = self.unweighted_auxillary_env_effect_traj_loss
+			log_dict['Auxillary Env Effect Traj Loss'] = self.auxillary_env_effect_traj_loss
+			log_dict['Env Effect Traj Distance Threshold'] = self.auxillary_z_env_effect_distance_threshold
 
 		if counter%self.args.display_freq==0:
 			
@@ -2599,9 +2719,9 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 				# Just select one trajectory from batch.
 				sample_traj = sample_traj[:,0]
 
-			############
+			###################################
 			# Plotting embedding in tensorboard. 
-			############
+			###################################
 
 			# Get latent_z set. 
 			self.get_trajectory_and_latent_sets(get_visuals=True)
@@ -2615,6 +2735,16 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			self.embedded_z_dict['perp10'] = self.get_robot_embedding(perplexity=10)
 			self.embedded_z_dict['perp30'] = self.get_robot_embedding(perplexity=30)
 
+			###################################
+			# Embedding different latent spaces..
+			###################################
+
+			# print("Embedding in latent z plots")
+			# embed()
+
+			self.embedded_z_dict['perp30_zE'] = self.get_robot_embedding(perplexity=30, latent_z=self.latent_z_set[:,int(self.latent_z_dimensionality/2):])
+			self.embedded_z_dict['perp30_zR'] = self.get_robot_embedding(perplexity=30, latent_z=self.latent_z_set[:,:int(self.latent_z_dimensionality/2)])
+
 			# Save embedded z's and trajectory and latent sets.
 			self.save_latent_sets(stat_dictionary)
 
@@ -2624,11 +2754,20 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			image_perp10 = self.plot_embedding(self.embedded_z_dict['perp10'], title="Z Space {0} Perp 10".format(statistics_line))
 			image_perp30 = self.plot_embedding(self.embedded_z_dict['perp30'], title="Z Space {0} Perp 30".format(statistics_line))
 			
+			image_perp30_zE = self.plot_embedding(self.embedded_z_dict['perp30_zE'], title="Z_Env Space {0} Perp 30".format(statistics_line))
+			image_perp30_zR = self.plot_embedding(self.embedded_z_dict['perp30_zR'], title="Z_Robot Space {0} Perp 30".format(statistics_line))
+
+			self.embedded_z_dict['perp30_shared_zRzE'] = np.concatenate([self.latent_z_set[:,:int(self.latent_z_dimensionality/2)], self.latent_z_set[:,int(self.latent_z_dimensionality/2):]], axis=0)
+			image_perp30_shared_zRzE = self.plot_embedding(self.embedded_z_dict['perp30_shared_zRzE'], title="Z_Robot Space {0} Perp 30".format(statistics_line), shared=True)
 			# Now adding image visuals to the wandb logs.
 			# log_dict["GT Trajectory"] = self.return_wandb_image(self.visualize_trajectory(sample_traj))
 			log_dict["Embedded Z Space Perplexity 5"] = self.return_wandb_image(image_perp5)
-			log_dict["Embedded Z Space Perplexity 10"] =  self.return_wandb_image(image_perp10)
-			log_dict["Embedded Z Space Perplexity 30"] =  self.return_wandb_image(image_perp30)
+			log_dict["Embedded Z Space Perplexity 10"] = self.return_wandb_image(image_perp10)
+			log_dict["Embedded Z Space Perplexity 30"] = self.return_wandb_image(image_perp30)
+
+			log_dict["Embedded Z_Env Space Perplexity 30"] = self.return_wandb_image(image_perp30_zE)
+			log_dict["Embedded Z_Robot Space Perplexity 30"] = self.return_wandb_image(image_perp30_zR)
+			log_dict["Embedded Shared Z_RobotEnv Space Perplexity 30"] = self.return_wandb_image(image_perp30_shared_zRzE)
 
 		# if counter%self.args.metric_eval_freq==0:
 		# 	self.visualize_robot_data(load_sets=False, number_of_trajectories_to_visualize=10)
@@ -2642,7 +2781,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		
 		if shared:
 			colors = 0.2*np.ones((2*self.N))
-			colors[self.N:] = 0.8
+			colors[self.N:] = 0.92
 		else:
 			colors = 0.2*np.ones((self.N))
 
@@ -2901,9 +3040,11 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		# Initialize losses.
 		self.unweighted_relative_state_reconstruction_loss = 0.
 		self.relative_state_reconstruction_loss = 0.
+
 		# 
 		self.unweighted_relative_state_phase_aux_loss = 0.
 		self.relative_state_phase_aux_loss = 0.
+		
 		# 
 		self.unweighted_task_based_aux_loss = 0.
 		self.task_based_aux_loss = 0.
@@ -2914,35 +3055,54 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		self.unweighted_cummmulative_computed_state_reconstruction_loss = 0.
 		self.cummulative_computed_state_reconstruction_loss = 0.
 
+		# 
+		self.unweighted_auxillary_z_env_effect_z_loss = 0.
+		self.auxillary_z_env_effect_z_loss = 0. 
+
+		# 
+		self.unweighted_auxillary_env_effect_traj_loss = 0.
+		self.auxillary_env_effect_traj_loss = 0.
+
 	def compute_auxillary_losses(self, update_dict):
 
 		self.initialize_aux_losses()
 
+		# print("Embed in aux loss computation")
+		# embed()
+
 		# Set the relative state reconstruction loss.
 		if self.args.relative_state_reconstruction_loss_weight>0.:
 			self.compute_relative_state_reconstruction_loss()
-		if self.args.task_based_aux_loss_weight>0. or self.args.relative_state_phase_aux_loss_weight>0.:
+
+		# if self.args.task_based_aux_loss_weight>0. or self.args.relative_state_phase_aux_loss_weight>0. or :
+		if self.args.task_based_aux_loss_weight + self.args.relative_state_phase_aux_loss_weight + self.args.auxillary_env_effect_traj_loss_weight + self.args.auxillary_z_env_effect_z_loss_weight > 0.:
 			self.compute_pairwise_z_distance(update_dict['latent_z'][0])
+		
+		# Computing z_env based auxillary loss based only on Z_ENV component. 
+		if self.args.auxillary_z_env_effect_z_loss_weight>0. :
+			self.compute_auxillary_z_env_effect_z_loss(update_dict=update_dict)
+
+		# Compute env effect trajectory based auxillary loss. 
+		# Compute this as evaluation metric if we're using the zenv loss..
+		if self.args.auxillary_env_effect_traj_loss_weight>0. or self.args.auxillary_z_env_effect_z_loss_weight>0.:
+			self.compute_auxillary_env_effect_traj_loss(update_dict=update_dict)
+
 		# Task based aux loss weight. 
 		if self.args.task_based_aux_loss_weight>0.:
 			self.compute_task_based_aux_loss(update_dict)
+
 		# Relative. 
 		if self.args.relative_state_phase_aux_loss_weight>0.:
 			self.compute_relative_state_phase_aux_loss(update_dict)
+		
+		# Cummulative / State Reconstruction Losses: 
 		if self.args.cummulative_computed_state_reconstruction_loss_weight>0. or self.args.teacher_forced_state_reconstruction_loss_weight>0.:
 			self.compute_absolute_state_reconstruction_loss()
 
 		# Weighting the auxillary loss...
-		self.aux_loss = self.relative_state_reconstruction_loss + self.relative_state_phase_aux_loss + self.task_based_aux_loss + self.absolute_state_reconstruction_loss
-
-	def compute_pairwise_z_distance(self, z_set):
-
-		# Compute pairwise task based weights.
-		self.pairwise_z_distance = torch.cdist(z_set, z_set)[0]
-
-		# Clamped z distance loss. 
-		# self.clamped_pairwise_z_distance = torch.clamp(self.pairwise_z_distance - self.args.pairwise_z_distance_threshold, min=0.)
-		self.clamped_pairwise_z_distance = torch.clamp(self.args.pairwise_z_distance_threshold - self.pairwise_z_distance, min=0.)
+		self.aux_loss = self.relative_state_reconstruction_loss + self.relative_state_phase_aux_loss \
+			  + self.task_based_aux_loss + self.absolute_state_reconstruction_loss + self.auxillary_z_env_effect_z_loss \
+				+ self.auxillary_env_effect_traj_loss
 
 	def compute_relative_state_class_vectors(self, update_dict):
 
@@ -2974,29 +3134,82 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		self.thresholded_beta_vector = np.swapaxes((beta_vector>self.beta_threshold_value).astype(float), 0, 1)		
 		self.torch_thresholded_beta_vector = torch.tensor(self.thresholded_beta_vector).to(device)
 
+	def batch_normalize_z_set(self, z_set):
+
+		# Non differentiable batch norm layer. 
+		batch_norm_layer = torch.nn.BatchNorm1d(z_set.shape[-1], affine=False, track_running_stats=False)
+		
+		# Normalized .. 
+		return batch_norm_layer(z_set)
+
+	def compute_pairwise_z_distance(self, z_set):
+
+		# Assumes it got update_dict['latent_z'][0] as input. 
+		# Partition z sets for streamwise distances. 		
+		z_robot_set = z_set[...,:int(self.latent_z_dimensionality/2)]
+		z_env_set = z_set[...,int(self.latent_z_dimensionality/2):]
+
+		# Construct dictionary of all z distances so that they can be computed here. 		
+		if self.args.batch_norm_zs:			
+			normed_z_robot_set = self.batch_normalize_z_set(z_robot_set)
+			normed_z_env_set = self.batch_normalize_z_set(z_env_set)
+			normed_z_joint_set = self.batch_normalize_z_set(z_set)		
+
+			if self.args.split_stream_encoder:
+				normed_z_joint_set = torch.cat([normed_z_robot_set, normed_z_env_set], axis=-1)
+
+		else:
+			normed_z_robot_set = z_robot_set			
+			normed_z_env_set = z_env_set	
+			normed_z_joint_set = z_set
+
+		self.pairwise_z_distances_dict = {}
+		self.pairwise_z_distances_dict['z_robot_distances'] = torch.cdist(normed_z_robot_set, normed_z_robot_set)
+		self.pairwise_z_distances_dict['z_env_distances'] = torch.cdist(normed_z_env_set, normed_z_env_set)			
+		self.pairwise_z_distances_dict['z_joint_distances'] = torch.cdist(normed_z_joint_set, normed_z_joint_set)
+		
+		# Clamped z distance loss. 
+		# self.clamped_pairwise_z_distance = torch.clamp(self.pairwise_z_distance - self.args.pairwise_z_distance_threshold, min=0.)
+		self.clamped_pairwise_z_distance = torch.clamp(self.args.pairwise_z_distance_threshold - self.pairwise_z_distances_dict['z_joint_distances'], min=0.)
+
 	def compute_task_based_aux_loss(self, update_dict):
 
-		# Task list. 
+		##########################
+		# 1) Make task array. 
+		##########################
 		task_list = []
 		for k in range(self.args.batch_size):
-			task_list.append(update_dict['data_element'][k]['task-id'])
-		# task_array = np.array(task_list).reshape(self.args.batch_size,1)
+			task_list.append(update_dict['data_element'][k]['task-id'])		
 		torch_task_array = torch.tensor(task_list, dtype=float).reshape(self.args.batch_size,1).to(device)
 		
-		# Compute pairwise task based weights. 
-		# pairwise_task_matrix = (scipy.spatial.distance.cdist(task_array)==0).astype(int).astype(float)
-		pairwise_task_matrix = (torch.cdist(torch_task_array, torch_task_array)==0).int().float()
+		##########################
+		# 2) Compute positive and negative masks. 
+		##########################
 
-		# Positive weighted task loss. 
-		positive_weighted_task_loss = pairwise_task_matrix*self.pairwise_z_distance
+		positive_full_mask = (torch.cdist(torch_task_array, torch_task_array)==0).int().float()
+		negative_full_mask = 1 - positive_full_mask
 
-		# Negative weighted task loss. 
-		# MUST CHECK SIGNAGE OF THIS. 
-		negative_weighted_task_loss = (1.-pairwise_task_matrix)*self.clamped_pairwise_z_distance
+		# Compute upper triangular versions of thes ematrics.
+		positive_triangularized_mask = torch.triu(positive_full_mask, diagonal=1)
+		negative_triangularized_mask = torch.triu(negative_full_mask, diagonal=1)
+
+		##############################
+		# 4) Compute Positive and Negative loss components. 
+		##############################
+
+		unmasked_task_based_aux_loss_positive_component = torch.clamp(self.pairwise_z_distances_dict['z_joint_distances'], min=self.args.positive_z_distance_margin)
+		unmasked_task_based_aux_loss_negative_component = torch.clamp(self.args.negative_z_distance_margin - self.pairwise_z_distances_dict['z_joint_distances'], min=0.)
+
+		self.masked_task_based_aux_loss_positive_component = (positive_triangularized_mask*unmasked_task_based_aux_loss_positive_component).mean()
+		self.masked_task_based_aux_loss_negative_component = (negative_triangularized_mask*unmasked_task_based_aux_loss_negative_component).mean()
+		
+		##############################
+		# 5) Weight Positive and Negative loss components. 
+		##############################
 
 		# Total task_based_aux_loss.
-		self.unweighted_task_based_aux_loss = (positive_weighted_task_loss + self.args.negative_task_based_component_weight*negative_weighted_task_loss).mean()
-		self.task_based_aux_loss = self.args.task_based_aux_loss_weight*self.unweighted_task_based_aux_loss
+		self.unweighted_task_based_aux_loss = (self.masked_task_based_aux_loss_positive_component + self.args.negative_component_weight*self.masked_task_based_aux_loss_negative_component).mean()
+		self.task_based_aux_loss = self.aux_task_based_loss_weight*self.unweighted_task_based_aux_loss
 
 	def compute_relative_state_phase_aux_loss(self, update_dict):
 
@@ -3005,16 +3218,16 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 
 		# Compute similarity of rel state vector across batch.
 		self.relative_state_vector_distance = torch.cdist(self.torch_thresholded_beta_vector, self.torch_thresholded_beta_vector)
-		self.relative_state_vector_similarity_matrix = (self.relative_state_vector_distance==0).float()
-	
+		self.relative_state_vector_similarity_matrix = (self.relative_state_vector_distance==0).float()		
+
 		# Now set positive loss.
-		positive_weighted_rel_state_phase_loss = self.relative_state_vector_similarity_matrix*self.pairwise_z_distance
+		positive_weighted_rel_state_phase_loss = self.relative_state_vector_similarity_matrix*self.pairwise_z_distances_dict['z_joint_distances']
 
 		# Set negative component
 		negative_weighted_rel_state_phase_loss = (1.-self.relative_state_vector_similarity_matrix)*self.clamped_pairwise_z_distance
 
 		# Total rel state phase loss.
-		self.unweighted_relative_state_phase_aux_loss = (positive_weighted_rel_state_phase_loss + self.args.negative_task_based_component_weight*negative_weighted_rel_state_phase_loss).mean()
+		self.unweighted_relative_state_phase_aux_loss = (positive_weighted_rel_state_phase_loss + self.args.negative_component_weight*negative_weighted_rel_state_phase_loss).mean()
 		self.relative_state_phase_aux_loss = self.args.relative_state_phase_aux_loss_weight*self.unweighted_relative_state_phase_aux_loss
 
 	def compute_relative_state_reconstruction_loss(self):
@@ -3056,14 +3269,161 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		relabelled_state_sequence = torch_trajectory
 
 		# Relabel the dims. 
-
-		# print("Debug in Relabel")
-		# embed()
-
 		torchified_object_state = torch.from_numpy(self.normalized_subsampled_relative_object_state).to(device).view(-1, self.args.batch_size, self.args.env_state_size)		
 		relabelled_state_sequence[..., -self.args.env_state_size:] = torchified_object_state
 
 		return relabelled_state_sequence	
+
+	def compute_auxillary_env_effect_traj_loss(self, update_dict):
+
+		##############################
+		# Implement an auxillary loss that forces z_J into similar parts of the space when Traj_E's are similar. 
+		##############################
+
+		##############################
+		# In more detail: 
+		# 	1) Given a batch of Trajectories {Tau}, and corresponding encodings {z_R} and {z_E}. 
+		# 	2) Consider trajectories {Tau}^i, {Tau}^j. If the environmental effects of these trajectories are similar, 
+		# 		then under a good encoding of these trajectories, z_E^i and z_E^j should be similar, i.e. ||z_E^i - z_E^j||<Delta. 
+		# 	3) In this case, L_aux = max(epsilon, ||z_J^i - z_J^j||^2)	+ min 
+		##############################		
+
+		##############################
+		# 2) Compute distances for both Z Set and Trajectory Segments
+		##############################
+		
+		# Compute Z distances. 
+		z_distances = self.pairwise_z_distances_dict['z_joint_distances']
+	
+		##############################
+		# Select the position of the first object for the trajectory based loss. 
+		##############################
+
+		object_torch_traj = torch.from_numpy(update_dict['sample_traj'][..., self.args.robot_state_size:self.args.robot_state_size+3]).cuda()
+		
+		# Normalize trajectory w.r.t. initial state. 
+		normalized_object_torch_traj = object_torch_traj - object_torch_traj[0]
+
+		# Compute trajectory distances.
+		trajectory_distances = torch.cdist(normalized_object_torch_traj, normalized_object_torch_traj).mean(axis=0)						
+
+		if self.args.z_env_loss_style=='contrastive':
+			
+			##############################
+			# 3) Compute Masks. 
+			##############################	
+
+			# Compute a mask, where the entries are 1., when ||z_E^i - z_E^j||<Delta, so apply L_aux = max(epsilon, ||z_R^i - z_R^j||^2). 
+			positive_full_mask = (trajectory_distances <= self.auxillary_z_env_effect_distance_threshold).int()
+			negative_full_mask = 1 - positive_full_mask
+
+			# Compute upper triangular versions of thes ematrics.
+			positive_triangularized_mask = torch.triu(positive_full_mask, diagonal=1)
+			negative_triangularized_mask = torch.triu(negative_full_mask, diagonal=1)
+			
+			##############################
+			# 4) Compute Positive and Negative loss components. 
+			##############################
+							
+			unmasked_aux_z_env_loss_positive_component = torch.clamp(z_distances, min=self.args.positive_z_distance_margin)
+			unmasked_aux_z_env_loss_negative_component = torch.clamp(self.args.negative_z_distance_margin - z_distances, min=0.)
+
+			self.masked_aux_env_effect_traj_loss_positive_component = (positive_triangularized_mask*unmasked_aux_z_env_loss_positive_component).mean()
+			self.masked_aux_env_effect_traj_loss_negative_component = (negative_triangularized_mask*unmasked_aux_z_env_loss_negative_component).mean()
+
+		elif self.args.z_env_loss_style=='metric':
+
+			##############################
+			# 3) Compute target of metric losses. 
+			##############################	
+
+			clamped_trajectory_distances = torch.clamp(trajectory_distances, min=self.args.positive_z_distance_margin, max=self.args.negative_z_distance_margin)			
+			metric_loss_target = clamped_trajectory_distances
+
+			##############################
+			# 4) Construct masked loss.
+			##############################	
+
+			unmasked_aux_z_env_loss_positive_component = torch.square(z_distances - metric_loss_target)
+			unmasked_aux_z_env_loss_negative_component = 0. 
+
+			self.masked_aux_env_effect_traj_loss_positive_component = torch.triu(unmasked_aux_z_env_loss_positive_component, diagonal=1).sum()
+			self.masked_aux_env_effect_traj_loss_negative_component = 0.
+
+		##############################
+		# 5) Weight Positive and Negative loss components. 
+		##############################
+
+		self.unweighted_auxillary_env_effect_traj_loss = self.masked_aux_env_effect_traj_loss_positive_component + self.args.negative_component_weight*self.masked_aux_env_effect_traj_loss_negative_component
+		self.auxillary_env_effect_traj_loss = self.aux_env_effect_traj_loss_weight*self.unweighted_auxillary_env_effect_traj_loss
+
+	def compute_auxillary_z_env_effect_z_loss(self, update_dict):
+
+		##############################
+		# Implement an auxillary loss that forces z_R into similar parts of the space when z_E's are similar. 
+		##############################
+
+		##############################
+		# In more detail: 
+		# 	1) Given a batch of Trajectories {Tau}, and corresponding encodings {z_R} and {z_E}. 
+		# 	2) Consider trajectories {Tau}^i, {Tau}^j. If the environmental effects of these trajectories are similar, 
+		# 		then under a good encoding of these trajectories, z_E^i and z_E^j should be similar, i.e. ||z_E^i - z_E^j||<Delta. 
+		# 	3) In this case, L_aux = max(epsilon, ||z_R^i - z_R^j||^2)	+ min 
+		##############################
+		
+		##############################
+		# 1) Partition Z Sets.
+		##############################
+
+		z_robot_set = update_dict['latent_z'][0,:,:int(self.latent_z_dimensionality/2)]
+		z_env_set = update_dict['latent_z'][0,:,int(self.latent_z_dimensionality/2):]
+
+		##############################
+		# 2) Compute Z distances for both Z Sets. 
+		##############################
+		
+		if self.args.metric_distance_space=='z_R':
+			z_distances = self.pairwise_z_distances_dict['z_robot_distances']
+		elif self.args.metric_distance_space=='z_J':
+			z_distances = self.pairwise_z_distances_dict['z_joint_distances']
+		elif self.args.metric_distance_space=='rel_zR_zE':
+			# For each element in batch, compute relative vector between zR and zE. 
+			relative_zR_zE_vector = z_robot_set - z_env_set
+			
+			# Now compute distances of this across the batch. 
+			z_distances = torch.cdist(relative_zR_zE_vector, relative_zR_zE_vector)
+					
+		##############################
+		# 3) Compute Masks. 
+		##############################	
+
+		# Compute a mask, where the entries are 1., when ||z_E^i - z_E^j||<Delta, so apply L_aux = max(epsilon, ||z_R^i - z_R^j||^2). 
+		positive_full_mask = (self.pairwise_z_distances_dict['z_env_distances'] <= self.auxillary_z_env_effect_distance_threshold).int()
+		negative_full_mask = 1 - positive_full_mask
+
+		# Compute upper triangular versions of thes ematrics.
+		positive_triangularized_mask = torch.triu(positive_full_mask, diagonal=1)
+		negative_triangularized_mask = torch.triu(negative_full_mask, diagonal=1)
+		
+		# print("Embedding in z env aux loss computation.")
+		# embed()
+
+		##############################
+		# 4) Compute Positive and Negative loss components. 
+		##############################
+						
+		unmasked_aux_z_env_loss_positive_component = torch.clamp(z_distances, min=self.args.positive_z_distance_margin)
+		unmasked_aux_z_env_loss_negative_component = torch.clamp(self.args.negative_z_distance_margin - z_distances, min=0.)
+
+		self.masked_aux_z_env_loss_positive_component = (positive_triangularized_mask*unmasked_aux_z_env_loss_positive_component).mean()
+		self.masked_aux_z_env_loss_negative_component = (negative_triangularized_mask*unmasked_aux_z_env_loss_negative_component).mean()
+		
+		##############################
+		# 5) Weight Positive and Negative loss components. 
+		##############################
+
+		self.unweighted_auxillary_z_env_effect_z_loss = self.masked_aux_z_env_loss_positive_component + self.args.negative_component_weight*self.masked_aux_z_env_loss_negative_component
+		self.auxillary_z_env_effect_z_loss = self.aux_env_effect_z_loss_weight*self.unweighted_auxillary_z_env_effect_z_loss
 
 	def compute_absolute_state_reconstruction_loss(self):
 
@@ -3256,7 +3616,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			torch_traj_seg = torch.tensor(state_action_trajectory).to(device).float()
 			# Encode trajectory segment into latent z. 		
 						
-			latent_z, encoder_loglikelihood, encoder_entropy, kl_divergence = self.encoder_network.forward(torch_traj_seg, self.epsilon)
+			latent_z, encoder_loglikelihood, encoder_entropy, kl_divergence = self.encoder_network.forward(torch_traj_seg, self.epsilon, positional_encoding_offsets=self.batch_segment_indices)
 			# latent_z, encoder_loglikelihood, encoder_entropy, kl_divergence = self.encoder_network.forward(torch_traj_seg)
 			
 			####################################
@@ -3372,12 +3732,12 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 				self.visualize_robot_data(load_sets=whether_load_z_set)
 
 				
-				print("###############################################")
-				print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
-				print("Query before we run get trajectory latent sets, so latent_z_set isn't overwritten..")
-				print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
-				print("###############################################")				
-				embed()
+				# print("###############################################")
+				# print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+				# print("Query before we run get trajectory latent sets, so latent_z_set isn't overwritten..")
+				# print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+				# print("###############################################")				
+				# embed()
 
 				# Get reconstruction error... 
 				self.get_trajectory_and_latent_sets(get_visuals=True)
@@ -3406,6 +3766,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		# Embed plots. 
 
 		# Set N:
+		# N is number of trajectory segments we want to visualize
 		self.N = 500
 
 		self.latent_z_set = np.zeros((self.N,self.latent_z_dimensionality))
@@ -3477,13 +3838,15 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		self.task_id_set = []
 
 		# Use the dataset to get reasonable trajectories (because without the information bottleneck / KL between N(0,1), cannot just randomly sample.)
+
 		# # for i in range(self.N//self.args.batch_size+1, 32)
 		# for i in range(0, self.N, self.args.batch_size):
-		for i in range(math.ceil(min(self.N, len(self.dataset))/self.args.batch_size)):
+    # for i in range(math.ceil(min(self.N, len(self.dataset))/self.args.batch_size)):
+    for i in range(math.ceil(self.N/self.args.batch_size)):
 
-			# Mapped index
-			number_batches_for_dataset = math.ceil(self.N/self.args.batch_size)
+      number_batches_for_dataset = math.ceil(len(self.dataset)/self.args.batch_size)
 			j = i % number_batches_for_dataset
+			# j = 0, 1, 0, 1, 0, 1,
 
 			########################################
 			# (1) Encoder trajectory. 
@@ -3591,6 +3954,29 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		self.kdtree_dict['robot'] = KDTree(self.stream_latent_z_dict['robot'])
 		self.kdtree_dict['env'] = KDTree(self.stream_latent_z_dict['env'])
 
+	def create_z_kdtrees_with_N_by_2_trajectories(self):
+		
+		####################################
+		# Algorithm to construct models
+		####################################
+
+		# 0) Assume that the encoder(s) are trained, and that the latent space is trained.
+		# 1) Maintain map of Z_R <--> Z_E. 
+		# 	1a) Check that the latent_z_sets are tuples. 
+		# 	1b) Seems like we don't actually need the map if the latent z sets are constructed by the same function / indexing.
+		# 2) Construct KD Trees. 
+		# 	2a) KD_R = KDTREE( {Z_R} )
+		# 	2b) KD_E = KDTREE( {Z_E} )
+		
+		# self.kdtree_robot_z = KDTree(self.robot_latent_z_set)
+		# self.kdtree_env_z = KDTree(self.env_latent_z_set)		
+
+		self.kdtree_dict = {}
+		rows, cols = np.shape(self.stream_latent_z_dict['robot'])
+		self.kdtree_dict['robot'] = KDTree(self.stream_latent_z_dict['robot'][:int(rows/2), :])
+		self.kdtree_dict['env'] = KDTree(self.stream_latent_z_dict['env'][:int(rows/2), :])
+		self.kdtree_dict['robot_env'] = KDTree(self.stream_latent_z_dict['robot_env'][:int(rows/2), :])
+		
 	def get_query_trajectory(self, input_state_trajectory, stream=None):
 		
 		# Assume trajectory is dimensions |T| x |S|. 
@@ -3678,11 +4064,164 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 
 		# Single stream latent z set dict. 
 		self.stream_latent_z_dict = {}
-		self.stream_latent_z_dict['robot']= copy.deepcopy(self.latent_z_set[:,:int(self.latent_z_dimensionality/2)])
-		self.stream_latent_z_dict['env']= copy.deepcopy(self.latent_z_set[:,int(self.latent_z_dimensionality/2):])
+		#self.stream_latent_z_dict['robot']= copy.deepcopy(self.latent_z_set[:,:int(self.latent_z_dimensionality/2)])
+		self.stream_latent_z_dict['robot']= copy.deepcopy(self.latent_z_set[:96,:int(self.latent_z_dimensionality/2)])
+		#self.stream_latent_z_dict['env']= copy.deepcopy(self.latent_z_set[:,int(self.latent_z_dimensionality/2):])
+		self.stream_latent_z_dict['env']= copy.deepcopy(self.latent_z_set[:96,int(self.latent_z_dimensionality/2):])
+		self.stream_latent_z_dict['robot_env']= copy.deepcopy(self.latent_z_set[:96,:])
 		
 		# 1) Create KD Trees.
 		self.create_z_kdtrees()	
+
+	def query_z_robot_kdtrees_with_N_by_2_trajectories(self):
+
+		# 0) Create KD trees with N/2 trajectories.
+		# 1) Query with the remaining N/2 trajectories for nearest neighbour wrt robot
+
+		self.create_z_kdtrees_with_N_by_2_trajectories()
+
+		# dictionary to save similarity score with k=1,3,5 nearest neighbours
+		self.nn_similarity_robot={}
+		self.nn_similarity_robot['skill']
+		self.nn_similarity_robot['task']
+		
+		self.nn_accuracy_robot={}
+		self.nn_accuracy_robot['skill'] = {}
+		self.nn_accuracy_robot['skill']['metric_1'] = {}
+		self.nn_accuracy_robot['skill']['metric_2'] = {}
+		self.nn_accuracy_robot['task'] = {}
+		self.nn_accuracy_robot['task']['metric_1'] = {}
+		self.nn_accuracy_robot['task']['metric_2'] = {}
+
+		rows, cols = np.shape(self.stream_latent_z_dict['robot'])
+		for knn in [1,3,5]:
+			self.nn_similarity_robot['skill']['{}'.format(knn)] = np.array([])
+			self.nn_similarity_robot['task']['{}'.format(knn)] = np.array([])
+
+			for element_idx, element in enumerate(self.stream_latent_z_dict['robot'][int(rows/2):, :]):
+				distances, nn_idx = self.kdtree_dict['robot'].query(element, knn)
+				skill_ctr = 0.
+				task_ctr = 0.
+
+				if knn == 1:
+					nn_idx = np.array([nn_idx])
+					
+				nn_skills_names = np.array([])
+				for idx in nn_idx:
+					if label_dict['{:03d}'.format(idx)] == label_dict['{:03d}'.format(element_idx)]:
+						skill_ctr += 1.
+					if self.task_name_set[idx] == self.task_name_set[element_idx]:
+						task_ctr += 1.
+					nn_skills_names = np.append(nn_skills_names, label_dict['{:03d}'.format(idx)])
+				#print("Task No. = {}, Skill = {}, Nearest Neighbour Skills = {}".format(element_idx, label_dict['{:03d}'.format(element_idx)], nn_skills_names))
+				
+				self.nn_similarity_robot['skill']['{}'.format(knn)] = np.append(self.nn_similarity_robot['skill']['{}'.format(knn)], skill_ctr)
+				self.nn_similarity_robot['task']['{}'.format(knn)] = np.append(self.nn_similarity_robot['task']['{}'.format(knn)], task_ctr)
+			
+			self.nn_accuracy_robot['skill']['metric_1']['{}'.format(knn)] = np.sum(self.nn_similarity_robot['skill']['{}'.format(knn)]) / ((rows/2)*knn)
+			self.nn_accuracy_robot['skill']['metric_2']['{}'.format(knn)] = np.sum(self.nn_similarity_robot['skill']['{}'.format(knn)] >= 1.) / (rows/2)
+			self.nn_accuracy_robot['task']['metric_1']['{}'.format(knn)] = np.sum(self.nn_similarity_robot['task']['{}'.format(knn)]) / ((rows/2)*knn)
+			self.nn_accuracy_robot['task']['metric_2']['{}'.format(knn)] = np.sum(self.nn_similarity_robot['task']['{}'.format(knn)] >= 1.) / (rows/2)
+
+	def query_z_env_kdtrees_with_N_by_2_trajectories(self):
+
+		# 0) Create KD trees with N/2 trajectories.
+		# 1) Query with the remaining N/2 trajectories for nearest neighbour wrt env
+
+		self.create_z_kdtrees_with_N_by_2_trajectories()
+
+		# dictionary to save similarity score with k=1,3,5 nearest neighbours
+		self.nn_similarity_env={}
+		self.nn_similarity_env['skill']
+		self.nn_similarity_env['task']
+		
+		self.nn_accuracy_env={}
+		self.nn_accuracy_env['skill'] = {}
+		self.nn_accuracy_env['skill']['metric_1'] = {}
+		self.nn_accuracy_env['skill']['metric_2'] = {}
+		self.nn_accuracy_env['task'] = {}
+		self.nn_accuracy_env['task']['metric_1'] = {}
+		self.nn_accuracy_env['task']['metric_2'] = {}
+
+		rows, cols = np.shape(self.stream_latent_z_dict['env'])
+		for knn in [1,3,5]:
+			self.nn_similarity_env['skill']['{}'.format(knn)] = np.array([])
+			self.nn_similarity_env['task']['{}'.format(knn)] = np.array([])
+
+			for element_idx, element in enumerate(self.stream_latent_z_dict['env'][int(rows/2):, :]):
+				distances, nn_idx = self.kdtree_dict['env'].query(element, knn)
+				skill_ctr = 0.
+				task_ctr = 0.
+
+				if knn == 1:
+					nn_idx = np.array([nn_idx])
+
+				nn_skills_names = np.array([])
+				for idx in nn_idx:
+					if label_dict['{:03d}'.format(idx)] == label_dict['{:03d}'.format(element_idx)]:
+						skill_ctr += 1.
+					if self.task_name_set[idx] == self.task_name_set[element_idx]:
+						task_ctr += 1.
+					nn_skills_names = np.append(nn_skills_names, label_dict['{:03d}'.format(idx)])
+				#print("Task No. = {}, Skill = {}, Nearest Neighbour Skills = {}".format(element_idx, label_dict['{:03d}'.format(element_idx)], nn_skills_names))
+				
+				self.nn_similarity_env['skill']['{}'.format(knn)] = np.append(self.nn_similarity_env['skill']['{}'.format(knn)], skill_ctr)
+				self.nn_similarity_env['task']['{}'.format(knn)] = np.append(self.nn_similarity_env['task']['{}'.format(knn)], task_ctr)
+			
+			self.nn_accuracy_env['skill']['metric_1']['{}'.format(knn)] = np.sum(self.nn_similarity_env['skill']['{}'.format(knn)]) / ((rows/2)*knn)
+			self.nn_accuracy_env['skill']['metric_2']['{}'.format(knn)] = np.sum(self.nn_similarity_env['skill']['{}'.format(knn)] >= 1.) / (rows/2)
+			self.nn_accuracy_env['task']['metric_1']['{}'.format(knn)] = np.sum(self.nn_similarity_env['task']['{}'.format(knn)]) / ((rows/2)*knn)
+			self.nn_accuracy_env['task']['metric_2']['{}'.format(knn)] = np.sum(self.nn_similarity_env['task']['{}'.format(knn)] >= 1.) / (rows/2)
+
+	def query_z_robot_env_kdtrees_with_N_by_2_trajectories(self):
+		
+		# 0) Create KD trees with N/2 trajectories.
+		# 1) Query with the remaining N/2 trajectories for nearest neighbour wrt robot and env
+
+		self.create_z_kdtrees_with_N_by_2_trajectories()
+
+		# dictionary to save similarity score with k=1,3,5 nearest neighbours for skill list and for task list
+		self.nn_similarity_robot_env={}
+		self.nn_similarity_robot_env['skill']
+		self.nn_similarity_robot_env['task']
+		
+		self.nn_accuracy_robot_env={}
+		self.nn_accuracy_robot_env['skill'] = {}
+		self.nn_accuracy_robot_env['skill']['metric_1'] = {}
+		self.nn_accuracy_robot_env['skill']['metric_2'] = {}
+		self.nn_accuracy_robot_env['task'] = {}
+		self.nn_accuracy_robot_env['task']['metric_1'] = {}
+		self.nn_accuracy_robot_env['task']['metric_2'] = {}
+
+		rows, cols = np.shape(self.stream_latent_z_dict['robot_env'])
+		for knn in [1,3,5]:
+			self.nn_similarity_robot_env['skill']['{}'.format(knn)] = np.array([])
+			self.nn_similarity_robot_env['task']['{}'.format(knn)] = np.array([])
+
+			for element_idx, element in enumerate(self.stream_latent_z_dict['robot_env'][int(rows/2):, :]):
+				distances, nn_idx = self.kdtree_dict['robot_env'].query(element, knn)
+				skill_ctr = 0.
+				task_ctr = 0.
+
+				if knn == 1:
+					nn_idx = np.array([nn_idx])
+
+				nn_skills_names = np.array([])
+				for idx in nn_idx:
+					if label_dict['{:03d}'.format(idx)] == label_dict['{:03d}'.format(element_idx)]:
+						skill_ctr += 1.
+					if self.task_name_set[idx] == self.task_name_set[element_idx]:
+						task_ctr += 1.
+					nn_skills_names = np.append(nn_skills_names, label_dict['{:03d}'.format(idx)])
+				print("Task No. = {}, Skill = {}, Nearest Neighbour Skills = {}".format(element_idx, label_dict['{:03d}'.format(element_idx)], nn_skills_names))
+				
+				self.nn_similarity_robot_env['skill']['{}'.format(knn)] = np.append(self.nn_similarity_robot_env['skill']['{}'.format(knn)], skill_ctr)
+				self.nn_similarity_robot_env['task']['{}'.format(knn)] = np.append(self.nn_similarity_robot_env['task']['{}'.format(knn)], task_ctr)
+			
+			self.nn_accuracy_robot_env['skill']['metric_1']['{}'.format(knn)] = np.sum(self.nn_similarity_robot_env['skill']['{}'.format(knn)]) / ((rows/2)*knn)
+			self.nn_accuracy_robot_env['skill']['metric_2']['{}'.format(knn)] = np.sum(self.nn_similarity_robot_env['skill']['{}'.format(knn)] >= 1.) / (rows/2)
+			self.nn_accuracy_robot_env['task']['metric_1']['{}'.format(knn)] = np.sum(self.nn_similarity_robot_env['task']['{}'.format(knn)]) / ((rows/2)*knn)
+			self.nn_accuracy_robot_env['task']['metric_2']['{}'.format(knn)] = np.sum(self.nn_similarity_robot_env['task']['{}'.format(knn)] >= 1.) / (rows/2)
 
 	def evaluate_z_distances_for_batch(self, latent_z):
 
@@ -3804,7 +4343,7 @@ class PolicyManager_BatchPretrain(PolicyManager_Pretrain):
 			
 			batch_trajectory = np.zeros((self.args.batch_size, self.current_traj_len, self.state_size))
 			self.subsampled_relative_object_state = np.zeros((self.args.batch_size, self.current_traj_len, self.args.env_state_size))
-
+			self.batch_segment_indices = np.zeros((self.args.batch_size),dtype=int)
 			# POTENTIAL:
 			# for x in range(min(self.args.batch_size, len(self.index_list) - 1)):
 
@@ -3839,6 +4378,11 @@ class PolicyManager_BatchPretrain(PolicyManager_Pretrain):
 
 					end_timepoint = start_timepoint + self.current_traj_len
 
+					##########################
+					# Logging batch segment indices for smarter positional encoding. 
+					# Remember, only need the start index here, because we need have the segment length in the data.. 
+					##########################
+					self.batch_segment_indices[x] = start_timepoint					
 
 					if self.args.ee_trajectories:
 						batch_trajectory[x] = data_element[x]['endeffector_trajectory'][start_timepoint:end_timepoint]
@@ -3851,24 +4395,24 @@ class PolicyManager_BatchPretrain(PolicyManager_Pretrain):
 						else:
 							batch_trajectory[x] = data_element['demo'][start_timepoint:end_timepoint,:-1]
 
-					if self.args.data in ['RealWorldRigid', 'RealWorldRigidJEEF']:
+					if self.args.data in ['RealWorldRigid', 'RealWorldRigidJEEF', 'RealWorldRigidJEEFAbsRelObj', 'NDAXv2', 'RealWorldRigidHuman'] and self.args.images_in_real_world_dataset:
 
 						# Truncate the images to start and end timepoint. 
 						data_element[x]['subsampled_images'] = data_element[x]['images'][start_timepoint:end_timepoint]
 
-					if self.args.data in ['RealWorldRigidJEEF']:
+					if self.args.data in ['RealWorldRigidJEEF', 'RealWorldRigidJEEFAbsRelObj']:
 						self.subsampled_relative_object_state[x] = data_element[x]['relative-object-state'][start_timepoint:end_timepoint]
 
 			# If normalization is set to some value.
 			if self.args.normalization=='meanvar' or self.args.normalization=='minmax':
 				batch_trajectory = (batch_trajectory-self.norm_sub_value)/self.norm_denom_value
 
-				if self.args.data not in ['NDAX','NDAXMotorAngles']:
+				if self.args.data not in ['NDAX','NDAXMotorAngles','NDAXv2']:
 					self.normalized_subsampled_relative_object_state = (self.subsampled_relative_object_state - self.norm_sub_value[-self.args.env_state_size:])/self.norm_denom_value[-self.args.env_state_size:]
 
 			# Compute actions.
 			action_sequence = np.diff(batch_trajectory,axis=1)
-			if self.args.data not in ['NDAX','NDAXMotorAngles']:
+			if self.args.data not in ['NDAX','NDAXMotorAngles','NDAXv2']:
 				self.relative_object_state_actions = np.diff(self.normalized_subsampled_relative_object_state, axis=1)
 
 			# Concatenate
@@ -5719,7 +6263,11 @@ class PolicyManager_Joint(PolicyManager_BaseClass):
 
 		if input_dictionary is None:
 			input_dictionary = {}
-			input_dictionary['sample_traj'], input_dictionary['sample_action_seq'], input_dictionary['concatenated_traj'], input_dictionary['old_concatenated_traj'], data_element = self.collect_inputs(i, special_indices=special_indices, called_from_train=True, bucket_index=bucket_index)
+
+			input_dictionary['sample_traj'], input_dictionary['sample_action_seq'], \
+			input_dictionary['concatenated_traj'], input_dictionary['old_concatenated_traj'], input_dictionary['data_element'] = \
+				self.collect_inputs(i, special_indices=special_indices, called_from_train=True, bucket_index=bucket_index)
+
 			if self.args.task_discriminability or self.args.task_based_supervision:
 				input_dictionary['sample_task_id'] = self.input_task_id
 
@@ -6632,7 +7180,7 @@ class PolicyManager_BatchJoint(PolicyManager_Joint):
 				else:					
 					batch_trajectory[x,:self.batch_trajectory_lengths[x]] = data_element[x]['demo']
 
-				if self.args.data in ['RealWorldRigid'] and self.args.images_in_real_world_dataset:
+				if self.args.data in ['RealWorldRigid', 'RealWorldRigidHuman', 'RealWorldRigidJointEEF', 'NDAXv2'] and self.args.images_in_real_world_dataset:
 					data_element[x]['subsampled_images'] = data_element[x]['images']
 			
 			# If normalization is set to some value.

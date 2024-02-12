@@ -9,7 +9,7 @@
 from headers import *
 import DataLoaders, MIME_DataLoader, Roboturk_DataLoader, Mocap_DataLoader, Robomimic_DataLoaders, \
 	  GRAB_DataLoader, DAPG_DataLoader, DexMV_DataLoader, MOMART_DataLoader, FrankaKitchen_DataLoader, \
-		RealWorldRigid_DataLoader, NDAX_DataLoader
+		RealWorldRigid_DataLoader, NDAX_DataLoader, RealWorldHumanRigid_DataLoader
 from PolicyManagers import *
 import TestClass
 import faulthandler
@@ -133,16 +133,22 @@ def return_dataset(args, data=None, create_dataset_variation=False):
 		dataset = RealWorldRigid_DataLoader.RealWorldRigid_Dataset(args)
 	elif args.data in ['RealWorldRigidJEEF']:
 		dataset = RealWorldRigid_DataLoader.RealWorldRigid_JointEEFDataset(args)
+	elif args.data in ['RealWorldRigidJEEFAbsRelObj']:
+		dataset = RealWorldRigid_DataLoader.RealWorldRigid_JointEEF_AbsRelObj_Dataset(args)
 	############################
-	elif args.data in ['NDAXPreproc', 'NDAXPreprocv2']:
+	elif args.data in ['NDAXPreproc']:
 		dataset = NDAX_DataLoader.NDAXInterface_PreDataset(args)
-	elif args.data in ['NDAX', 'NDAXMotorAngles', 'NDAXv2']:
+	elif args.data in ['NDAXPreprocv2']:
+		dataset = NDAX_DataLoader.NDAXInterface_PreDataset_v2(args)		
+	elif args.data in ['NDAX', 'NDAXMotorAngles']:
 		dataset = NDAX_DataLoader.NDAXInterface_Dataset(args)
+	elif args.data in ['NDAXv2']:
+		dataset = NDAX_DataLoader.NDAXInterface_Dataset_v2(args)				
 	############################
 	elif args.data=='RealWorldRigidHumanPreproc':
-		dataset = RealWorldRigidHuman_DataLoader.RealWorldRigidHuman_PreDataset(args)
+		dataset = RealWorldHumanRigid_DataLoader.RealWorldHumanRigid_PreDataset(args)
 	elif args.data=='RealWorldRigidHuman':
-		dataset = RealWorldRigidHuman_DataLoader.RealWorldRigidHuman_PreDataset(args)
+		dataset = RealWorldHumanRigid_DataLoader.RealWorldHumanRigid_Dataset(args)
 
 	return dataset
 	
@@ -155,8 +161,10 @@ class Master():
 			print("Creating Datasets")			
 			self.dataset = return_dataset(self.args, create_dataset_variation=self.args.dataset_variation)			
 
-		# print("Embed after dataset creation")
-		# embed()
+		print("##########################")
+		print("Finished Dataset Creation.")		
+		print("##########################")
+		# embed()		
 
 		# Now define policy manager.
 		if self.args.setting in ['learntsub', 'joint']:
@@ -386,11 +394,15 @@ def parse_arguments():
 	parser.add_argument('--viz_gt_sim_rollout',dest='viz_gt_sim_rollout',type=int,default=0,help='Whether or not to visualize the GT trajectory by replaying through the simulator.')
 	parser.add_argument('--sim_viz_action_scale_factor',dest='sim_viz_action_scale_factor',type=float,default=0.3,help='Factor by which to scale actions when visualizing in simulation env.')
 	parser.add_argument('--sim_viz_step_repetition',dest='sim_viz_step_repetition',type=int,default=20,help='Number of times to repeat simulation step of visualization of traj.')
+	# Plot params
+	parser.add_argument('--plot_index_min', dest='plot_index_min', type=int, default=-1, help='Minimum index of dimensions to plot. ')
+	parser.add_argument('--plot_index_max', dest='plot_index_max', type=int, default=-1, help='Minimum index of dimensions to plot. ')
 
 	parser.add_argument('--entropy',dest='entropy',type=int,default=0)
 	parser.add_argument('--var_entropy',dest='var_entropy',type=int,default=0)
 	parser.add_argument('--ent_weight',dest='ent_weight',type=float,default=0.)
 	parser.add_argument('--var_ent_weight',dest='var_ent_weight',type=float,default=2.)
+	parser.add_argument('--positional_encoding',dest='positional_encoding',type=float, default=0., help='Whether or not to use positional encoding layers in the models.')
 	
 	parser.add_argument('--pretrain_bias_sampling',type=float,default=0.) # Defines percentage of trajectory within which to sample trajectory segments for pretraining.
 	parser.add_argument('--pretrain_bias_sampling_prob',type=float,default=0.)
@@ -430,6 +442,7 @@ def parse_arguments():
 	parser.add_argument('--embedding_visualization_stream',dest='embedding_visualization_stream',type=str,default=None,help='Which stream to use to embed and visualize Z space.')
 	parser.add_argument('--robot_state_size',dest='robot_state_size',type=int,default=8,help='Default robot state size.')
 	parser.add_argument('--env_state_size',dest='env_state_size',type=int,default=7,help='Default environment state size.')
+	parser.add_argument('--state_representation_layer', dest='state_representation_layer', type=int, default=0, help='Whether or not to use state representation layer.')	
 	parser.add_argument('--object_pure_relative_state',dest='object_pure_relative_state',type=int,default=0,help='Whether or not to use pure relative state for env abstraction input. ')
 	parser.add_argument('--soft_object', dest='soft_object', type=int, default=0, help='Whether or not we are learning with deformable objects.')
 	parser.add_argument('--images_in_real_world_dataset', dest='images_in_real_world_dataset', type=int, default=0, help='Whether to dela with images in the realworld datasset.')
@@ -437,9 +450,22 @@ def parse_arguments():
 	# Relative state reconstruction loss.
 	parser.add_argument('--relative_state_reconstruction_loss_weight', dest='relative_state_reconstruction_loss_weight', type=float, default=0., help='What weight to place on the relative state reconstruction loss in the robot-object setting..')	
 	parser.add_argument('--relative_state_phase_aux_loss_weight', dest='relative_state_phase_aux_loss_weight', type=float, default=0., help='Weight to place on the relative state phase aux loss.')
-	parser.add_argument('--task_based_aux_loss_weight', dest='task_based_aux_loss_weight', type=float, default=0., help='Weight to place on task based auxillary loss.')
-	parser.add_argument('--negative_task_based_component_weight', dest='negative_task_based_component_weight', type=float, default=1., help='Weight to place on the negative component of the task based aux loss.')
+	parser.add_argument('--task_based_aux_loss_weight', dest='task_based_aux_loss_weight', type=float, default=0., help='Weight to place on task based auxillary loss.')	
 	parser.add_argument('--pairwise_z_distance_threshold', dest='pairwise_z_distance_threshold', type=float, default=2., help='Minimum distance to push apart different parts of latent space that are semantically different.')
+	
+	# Auxillary Z_env effect loss. 
+	parser.add_argument('--positive_z_distance_margin', dest='positive_z_distance_margin', type=float, default=0.1, help='Positive Component Distance Margin')
+	parser.add_argument('--negative_z_distance_margin', dest='negative_z_distance_margin', type=float, default=5., help='Negative Component Distance Margin')
+	# Setting parameters for linear annealing of Distance Threshold for this Z_Env loss.
+	parser.add_argument('--initial_z_distance_threshold',dest='initial_z_distance_threshold',type=float,default=2.)
+	parser.add_argument('--final_z_distance_threshold',dest='final_z_distance_threshold',type=float,default=1.)	
+	parser.add_argument('--z_distance_threshold_decay_over',dest='z_distance_threshold_decay_over',type=int,default=100000)
+	parser.add_argument('--negative_component_weight', dest='negative_component_weight', type=float, default=1., help='Weight to place on the negative component of the task based aux loss.')# 
+	parser.add_argument('--auxillary_z_env_effect_z_loss_weight', dest='auxillary_z_env_effect_z_loss_weight', type=float, default=0., help='Weight to place on aux z_env effect loss. ')
+	parser.add_argument('--auxillary_env_effect_traj_loss_weight', dest='auxillary_env_effect_traj_loss_weight', type=float, default=0., help='Weight to place on aux env effect traj loss. ')
+	parser.add_argument('--metric_distance_space', dest='metric_distance_space', type=str, default='z_R', choices=['z_R', 'z_J', 'rel_zR_zE'], help='The stream over which metric losses in Z space are computed. Can be just robot, or joint zs.')	
+	parser.add_argument('--z_env_loss_style', dest='z_env_loss_style', type=str, default='contrastive', choices=['contrastive','metric'], help='Whether to define a contrastive loss or a metric loss.')
+	parser.add_argument('--batch_norm_zs', dest='batch_norm_zs', type=int, default=0, help='Whether or not to normalize zs before computing distances.')
 
 	# absolute state reconstruction
 	parser.add_argument('--cummulative_computed_state_reconstruction_loss_weight', dest='cummulative_computed_state_reconstruction_loss_weight', type=float, default=0., \
