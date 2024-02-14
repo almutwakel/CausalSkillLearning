@@ -309,6 +309,8 @@ class RealWorldHumanRigid_PreDataset(Dataset):
 				if tag != 'tag0':
 
 					tag_data = demonstration['tag_detections_in_cam'][cam][tag]
+
+					# No tag detections 
 					if np.size(np.where(np.array(tag_data['tag_validity'])==1)[0]) ==0:
 						print('{} is empty in {}'.format(tag, cam))
 						demonstration['tag_detections'][cam][tag] = {
@@ -1091,7 +1093,8 @@ class RealWorldHumanRigid_Dataset(RealWorldHumanRigid_PreDataset):
 		self.files = []
 		for i in range(len(self.task_list)):
 			# "New_Task_Demo_Array{}_HDImages.npy"
-			self.files.append(np.load("{0}/{1}/New_Task_Demo_Array_HDImages.npy".format(self.dataset_directory, self.task_list[i]), allow_pickle=True))
+			# self.files.append(np.load("{0}/{1}/New_Task_Demo_Array_HDImages.npy".format(self.dataset_directory, self.task_list[i]), allow_pickle=True))
+			self.files.append(np.load("{0}/{1}/New_Task_Demo_Array_HDImages_NoTagFusion.npy".format(self.dataset_directory, self.task_list[i]), allow_pickle=True))
 
 	def __getitem__(self, index):
 
@@ -1127,6 +1130,9 @@ class RealWorldHumanRigid_Dataset(RealWorldHumanRigid_PreDataset):
 				self.downsample_data(data_element, data_element['task-id'], self.args.ds_freq)
 				# data_element = 
 			
+			# Copy over to different key. 
+			data_element['object-state'] = data_element['all-object-state']
+
 			if self.args.smoothen:
 				data_element['demo'] = gaussian_filter1d(data_element['demo'],self.kernel_bandwidth,axis=0,mode='nearest')
 				data_element['hand-state'] = gaussian_filter1d(data_element['hand-state'],self.kernel_bandwidth,axis=0,mode='nearest')
@@ -1136,6 +1142,15 @@ class RealWorldHumanRigid_Dataset(RealWorldHumanRigid_PreDataset):
 			if self.args.data in ['RealWorldHumanRigidHand']:
 				data_element['demo'] = data_element['hand-state']
 			# data_element['environment-name'] = self.environment_names[task_index]
+				
+			if self.args.data in ['RealWorldRigidHumanNNTransfer']:
+				data_element['old_demo'] = copy.deepcopy(data_element['demo'])
+
+				#######################
+				# First construct dummy hand state.				
+				data_element['dummy_hand_state'] = np.concatenate([data_element['hand-state'][...,:3], data_element['hand-state'][...,-4:]], axis=-1)
+				data_element['dummy_object_state'] = data_element['object-state'][...,:-14]
+				data_element['demo'] = np.concatenate([data_element['dummy_hand_state'], data_element['dummy_object_state']], axis=-1)
 
 		return data_element
 	

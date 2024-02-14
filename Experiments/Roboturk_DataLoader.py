@@ -58,6 +58,7 @@ class Roboturk_Dataset(Dataset):
 		self.joint_angle_indices = [1,3,4,5,6,7,8]
 		self.gripper_indices = [9,10]	
 		self.ds_freq = 20
+		self.state_size = 8
 		# self.r_gripper_r_finger_joint = np.array([-0.0116,   0.020833])
 		# self.r_gripper_l_finger_joint = np.array([-0.020833, 0.0135])
 
@@ -248,9 +249,8 @@ class Roboturk_Dataset(Dataset):
 			# np.save(os.path.join(self.dataset_directory,self.task_list[task_index],"New_Task_Demo_Array.npy"),task_demo_array)
 			np.save(os.path.join(self.dataset_directory,self.task_list[task_index],"New_Task_Demo_Array_with_Objects.npy"),task_demo_array)
 
-	def compute_statistics(self):
-
-		self.state_size = 8
+	def compute_statistics(self, suffix=""):
+		
 		self.total_length = self.__len__()
 		mean = np.zeros((self.state_size))
 		variance = np.zeros((self.state_size))
@@ -309,14 +309,14 @@ class Roboturk_Dataset(Dataset):
 		vel_max_value = vel_maxs.max(axis=0)
 		vel_min_value = vel_mins.min(axis=0)
 
-		np.save("Roboturk_Mean.npy", mean)
-		np.save("Roboturk_Var.npy", variance)
-		np.save("Roboturk_Min.npy", min_value)
-		np.save("Roboturk_Max.npy", max_value)
-		np.save("Roboturk_Vel_Mean.npy", vel_mean)
-		np.save("Roboturk_Vel_Var.npy", vel_variance)
-		np.save("Roboturk_Vel_Min.npy", vel_min_value)
-		np.save("Roboturk_Vel_Max.npy", vel_max_value)
+		np.save("Roboturk{}_Mean.npy".format(suffix), mean)
+		np.save("Roboturk{}_Var.npy".format(suffix), variance)
+		np.save("Roboturk{}_Min.npy".format(suffix), min_value)
+		np.save("Roboturk{}_Max.npy".format(suffix), max_value)
+		np.save("Roboturk{}_Vel_Mean.npy".format(suffix), vel_mean)
+		np.save("Roboturk{}_Vel_Var.npy".format(suffix), vel_variance)
+		np.save("Roboturk{}_Vel_Min.npy".format(suffix), vel_min_value)
+		np.save("Roboturk{}_Vel_Max.npy".format(suffix), vel_max_value)
 
 class Roboturk_FullDataset(Roboturk_Dataset):
 	
@@ -462,6 +462,7 @@ class Roboturk_NewSegmentedDataset(Dataset):
 		self.cummulative_num_demos = np.insert(self.cummulative_num_demos,0,0)
 
 		self.bad_original_index_list = [4900,537]
+		self.state_size = 8
 		# self.bad_original_index_list = []
 		
 		# Append -1 to the start of cummulative_num_demos. This has two purposes. 
@@ -651,12 +652,82 @@ class Roboturk_NewSegmentedDataset(Dataset):
 				data_element['flat-state'] = resample(data_element['flat-state'], resample_length)
 
 		return data_element
+	def compute_statistics(self, suffix=""):
+		
+		self.total_length = self.__len__()
+		mean = np.zeros((self.state_size))
+		variance = np.zeros((self.state_size))
+		mins = np.zeros((self.total_length, self.state_size))
+		maxs = np.zeros((self.total_length, self.state_size))
+		lens = np.zeros((self.total_length))
+
+		# And velocity statistics. 
+		vel_mean = np.zeros((self.state_size))
+		vel_variance = np.zeros((self.state_size))
+		vel_mins = np.zeros((self.total_length, self.state_size))
+		vel_maxs = np.zeros((self.total_length, self.state_size))
+
+		
+		for i in range(self.total_length):
+
+			print("Phase 1: DP: ",i)
+			data_element = self.__getitem__(i)
+
+			if data_element['is_valid']:
+				demo = data_element['demo']
+				vel = np.diff(demo,axis=0)
+				mins[i] = demo.min(axis=0)
+				maxs[i] = demo.max(axis=0)
+				mean += demo.sum(axis=0)
+				lens[i] = demo.shape[0]
+
+				vel_mins[i] = abs(vel).min(axis=0)
+				vel_maxs[i] = abs(vel).max(axis=0)
+				vel_mean += vel.sum(axis=0)			
+
+		mean /= lens.sum()
+		vel_mean /= lens.sum()
+
+		for i in range(self.total_length):
+
+			print("Phase 2: DP: ",i)
+			data_element = self.__getitem__(i)
+			
+			# Just need to normalize the demonstration. Not the rest. 
+			if data_element['is_valid']:
+				demo = data_element['demo']
+				vel = np.diff(demo,axis=0)
+				variance += ((demo-mean)**2).sum(axis=0)
+				vel_variance += ((vel-vel_mean)**2).sum(axis=0)
+
+		variance /= lens.sum()
+		variance = np.sqrt(variance)
+
+		vel_variance /= lens.sum()
+		vel_variance = np.sqrt(vel_variance)
+
+		max_value = maxs.max(axis=0)
+		min_value = mins.min(axis=0)
+
+		vel_max_value = vel_maxs.max(axis=0)
+		vel_min_value = vel_mins.min(axis=0)
+
+		np.save("Roboturk{}_Mean.npy".format(suffix), mean)
+		np.save("Roboturk{}_Var.npy".format(suffix), variance)
+		np.save("Roboturk{}_Min.npy".format(suffix), min_value)
+		np.save("Roboturk{}_Max.npy".format(suffix), max_value)
+		np.save("Roboturk{}_Vel_Mean.npy".format(suffix), vel_mean)
+		np.save("Roboturk{}_Vel_Var.npy".format(suffix), vel_variance)
+		np.save("Roboturk{}_Vel_Min.npy".format(suffix), vel_min_value)
+		np.save("Roboturk{}_Vel_Max.npy".format(suffix), vel_max_value)
+
 
 class Roboturk_ObjectDataset(Roboturk_NewSegmentedDataset):
 
 	def __init__(self, args):
 
 		super(Roboturk_ObjectDataset, self).__init__(args)
+		self.state_size = 7
 
 	def __getitem__(self, index):
 		
@@ -684,6 +755,8 @@ class Roboturk_RobotObjectDataset(Roboturk_NewSegmentedDataset):
 	def __init__(self, args):
 
 		super(Roboturk_RobotObjectDataset, self).__init__(args)
+		self.state_size = 15
+		self.stat_dir_name = 'RoboturkRobotObject'
 
 	def super_getitem(self, index):
 
