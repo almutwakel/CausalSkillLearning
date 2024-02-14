@@ -2448,6 +2448,9 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			self.state_dim = 21
 
 			# We deleted 18 dims from hand state
+			norm_indices = np.concatenate([ np.arange(0,3), np.arange(21,25), np.arange(25, 39)])
+			self.norm_sub_value = self.norm_sub_value[norm_indices]
+			self.norm_denom_value = self.norm_denom_value[norm_indices]
 
 			# Hand orientation. 
 			self.norm_denom_value[21-18:25-18] = 1.
@@ -2461,14 +2464,12 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			self.norm_denom_value[35-18:39-18] = 1.
 			self.norm_sub_value[35-18:39-18] = 0. 
 
-
 		self.input_size = 2*self.state_size
 		self.hidden_size = self.args.hidden_size
 		self.output_size = self.state_size
 		self.traj_length = self.args.traj_length			
 		self.conditional_info_size = 0
 		self.test_set_size = 0			
-
 
 		# Training parameters. 		
 		self.baseline_value = 0.
@@ -3076,6 +3077,10 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		self.unweighted_task_based_aux_loss = 0.
 		self.task_based_aux_loss = 0.
 
+		self.absolute_state_reconstruction_loss = 0. 
+		self.cummulative_computed_state_reconstruction_loss = 0. 
+		self.teacher_forced_state_reconstruction_loss = 0. 
+		
 		# 
 		self.unweighted_teacher_forced_state_reconstruction_loss = 0.
 		self.teacher_forced_state_reconstruction_loss = 0.
@@ -3221,11 +3226,32 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		negative_triangularized_mask = torch.triu(negative_full_mask, diagonal=1)
 
 		##############################
+		# 3) Partition Z Sets.
+		##############################
+
+		z_robot_set = update_dict['latent_z'][0,:,:int(self.latent_z_dimensionality/2)]
+		z_env_set = update_dict['latent_z'][0,:,int(self.latent_z_dimensionality/2):]
+
+
+		##############################
 		# 4) Compute Positive and Negative loss components. 
 		##############################
 
-		unmasked_task_based_aux_loss_positive_component = torch.clamp(self.pairwise_z_distances_dict['z_joint_distances'], min=self.args.positive_z_distance_margin)
-		unmasked_task_based_aux_loss_negative_component = torch.clamp(self.args.negative_z_distance_margin - self.pairwise_z_distances_dict['z_joint_distances'], min=0.)
+		if self.args.metric_distance_space=='z_R':
+			z_distances = self.pairwise_z_distances_dict['z_robot_distances']
+		elif self.args.metric_distance_space=='z_J':
+			z_distances = self.pairwise_z_distances_dict['z_joint_distances']
+		elif self.args.metric_distance_space=='z_E':
+			z_distances = self.pairwise_z_distances_dict['z_env_distances']
+		elif self.args.metric_distance_space=='rel_zR_zE':
+			# For each element in batch, compute relative vector between zR and zE. 
+			relative_zR_zE_vector = z_robot_set - z_env_set
+			
+			# Now compute distances of this across the batch. 
+			z_distances = torch.cdist(relative_zR_zE_vector, relative_zR_zE_vector)
+
+		unmasked_task_based_aux_loss_positive_component = torch.clamp(z_distances, min=self.args.positive_z_distance_margin)
+		unmasked_task_based_aux_loss_negative_component = torch.clamp(self.args.negative_z_distance_margin - z_distances, min=0.)
 
 		self.masked_task_based_aux_loss_positive_component = (positive_triangularized_mask*unmasked_task_based_aux_loss_positive_component).mean()
 		self.masked_task_based_aux_loss_negative_component = (negative_triangularized_mask*unmasked_task_based_aux_loss_negative_component).mean()
@@ -3413,12 +3439,15 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			z_distances = self.pairwise_z_distances_dict['z_robot_distances']
 		elif self.args.metric_distance_space=='z_J':
 			z_distances = self.pairwise_z_distances_dict['z_joint_distances']
+		elif self.args.metric_distance_space=='z_E':
+			z_distances = self.pairwise_z_distances_dict['z_env_distances']
 		elif self.args.metric_distance_space=='rel_zR_zE':
 			# For each element in batch, compute relative vector between zR and zE. 
 			relative_zR_zE_vector = z_robot_set - z_env_set
 			
 			# Now compute distances of this across the batch. 
 			z_distances = torch.cdist(relative_zR_zE_vector, relative_zR_zE_vector)
+		
 					
 		##############################
 		# 3) Compute Masks. 

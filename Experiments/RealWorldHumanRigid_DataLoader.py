@@ -309,6 +309,8 @@ class RealWorldHumanRigid_PreDataset(Dataset):
 				if tag != 'tag0':
 
 					tag_data = demonstration['tag_detections_in_cam'][cam][tag]
+
+					# No tag detections 
 					if np.size(np.where(np.array(tag_data['tag_validity'])==1)[0]) ==0:
 						print('{} is empty in {}'.format(tag, cam))
 						demonstration['tag_detections'][cam][tag] = {
@@ -1140,13 +1142,13 @@ class RealWorldHumanRigid_Dataset(RealWorldHumanRigid_PreDataset):
 				data_element['demo'] = data_element['hand-state']
 			# data_element['environment-name'] = self.environment_names[task_index]
 				
-			if self.args.data in ['RealWorldHumanRigidNNTransfer']:
+			if self.args.data in ['RealWorldRigidHumanNNTransfer']:
 				data_element['old_demo'] = copy.deepcopy(data_element['demo'])
 
 				#######################
-				# First construct dummy hand state. 				
-				data_element['dummy_hand_state'] = np.concatenate([data_element['hand-state'][...,-3:], data_element['hand_orientation']], axis=-1)
-				data_element['dummy_object_state'] = data_element['object-state']
+				# First construct dummy hand state.				
+				data_element['dummy_hand_state'] = np.concatenate([data_element['hand-state'][...,:3], data_element['hand-state'][...,-4:]], axis=-1)
+				data_element['dummy_object_state'] = data_element['object-state'][...,:-14]
 				data_element['demo'] = np.concatenate([data_element['dummy_hand_state'], data_element['dummy_object_state']], axis=-1)
 
 		return data_element
