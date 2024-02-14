@@ -425,7 +425,6 @@ class Robomimic_Dataset(OrigRobomimic_Dataset):
 
 			# By popping element from files / dataset_traj_lengths, we now don't need to change indexing.
 		
-
 	def setup(self):
 		self.files = []
 		for i in range(len(self.task_list)):
@@ -581,6 +580,7 @@ class Robomimic_RobotObjectDataset(Robomimic_Dataset):
 
 		super(Robomimic_RobotObjectDataset, self).__init__(args)
 		self.state_size = 15 
+		self.stat_dir_name = 'RobomimicRobotObject'
 
 	def super_getitem(self, index):
 
