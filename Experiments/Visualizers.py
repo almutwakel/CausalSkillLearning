@@ -23,6 +23,8 @@ import copy, os, imageio, scipy.misc, pdb, math, time, numpy as np
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+import mj_envs
+import dapg
 from mpl_toolkits.mplot3d import Axes3D
 from IPython import embed
 from memory_profiler import profile
