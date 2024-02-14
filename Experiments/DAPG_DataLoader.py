@@ -32,7 +32,7 @@ class DAPG_PreDataset(Dataset):
 		if self.args.datadir is None:
 			# self.dataset_directory = '/checkpoint/tanmayshankar/MIME/'
 			# self.dataset_directory = '/home/tshankar/Research/Code/Data/Datasets/MIME/'
-      # self.dataset_directory = '/home/almutwakel/Data/DAPG/'
+      		# self.dataset_directory = '/home/almutwakel/Data/DAPG/'
 			self.dataset_directory = '/home/tshankar/Research/Data/Datasets/DAPG/'
 			# self.dataset_directory = '/home/ahassan/CausalSkillLearning/Experiments/dapg/hand_dapg/dapg/demonstrations/'
 		else:
@@ -60,7 +60,6 @@ class DAPG_PreDataset(Dataset):
 
 		self.compute_statistics()
 
-
 	def set_relevant_joints(self):
 
 		# Create index arrays
@@ -69,9 +68,7 @@ class DAPG_PreDataset(Dataset):
 		self.hand_joint_indices['pen-v0_demos.pickle'] = list(range(0, 24))
 		self.hand_joint_indices['hammer-v0_demos.pickle'] = list(range(2, 26))
 		self.hand_joint_indices['relocate-v0_demos.pickle'] = list(range(6, 30))
-
-		
-
+	
 	def subsample_relevant_joints(self, datapoint, dataset_name):
 
 		# Remember, the datapoint is going to be of the form.. 
@@ -274,8 +271,7 @@ class DAPG_Dataset(Dataset):
 			self.dataset_directory = '/home/almutwakel/Data/DAPG/'
 
 		else:
-			self.dataset_directory = self.args.datadir
-		   
+			self.dataset_directory = self.args.datadir		
 		# Load file.
 		self.data_list = np.load(os.path.join(self.dataset_directory, self.getname() + "_DataFile_BaseNormalize.npy"), allow_pickle=True)
 		self.filelist = np.load(os.path.join(self.dataset_directory, self.getname() + "_OrderedFileList.npy"), allow_pickle=True)
@@ -311,7 +307,6 @@ class DAPG_Dataset(Dataset):
 				self.environment_names.append(f)
 		print("Env names:\n", np.unique(self.environment_names))
 
-
 	def getname(self):
 		return "DAPGFull"
 
@@ -336,6 +331,7 @@ class DAPG_Dataset(Dataset):
 		# data_element['file'] = self.filelist[task_index][81:-7]
 		data_element['file'] = self.environment_names[index]
 		data_element['task-id'] = index
+		
 		# print("Printing the index and the task ID from dataset:", index, data_element['file'])
 
 		return data_element

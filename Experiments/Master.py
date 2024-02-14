@@ -147,7 +147,7 @@ def return_dataset(args, data=None, create_dataset_variation=False):
 	############################
 	elif args.data=='RealWorldRigidHumanPreproc':
 		dataset = RealWorldHumanRigid_DataLoader.RealWorldHumanRigid_PreDataset(args)
-	elif args.data=='RealWorldRigidHuman':
+	elif args.data in ['RealWorldRigidHuman', 'RealWorldRigidHumanNNTransfer']:
 		dataset = RealWorldHumanRigid_DataLoader.RealWorldHumanRigid_Dataset(args)
 
 	return dataset
@@ -164,7 +164,7 @@ class Master():
 		print("##########################")
 		print("Finished Dataset Creation.")		
 		print("##########################")
-		# embed()		
+		embed()		
 
 		# Now define policy manager.
 		if self.args.setting in ['learntsub', 'joint']:

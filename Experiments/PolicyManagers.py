@@ -38,7 +38,7 @@ global_dataset_list = ['MIME','OldMIME','Roboturk','OrigRoboturk','FullRoboturk'
 			'MOMARTPreproc', 'MOMART', 'MOMARTObject', 'MOMARTRobotObject', 'MOMARTRobotObjectFlat', \
 			'FrankaKitchenPreproc', 'FrankaKitchen', 'FrankaKitchenObject', 'FrankaKitchenRobotObject', \
 			'RealWorldRigid', 'RealWorldRigidRobot', 'RealWorldRigidJEEF', 'RealWorldRigidJEEFAbsRelObj', \
-			'RealWorldRigidHuman', \
+			'RealWorldRigidHuman', 'RealWorldRigidHumanNNTransfer', \
 			'NDAX', 'NDAXMotorAngles', 'NDAXv2']
 
 class PolicyManager_BaseClass():
@@ -136,7 +136,7 @@ class PolicyManager_BaseClass():
 				self.visualizer = FetchMOMARTVisualizer(args=self.args)
 		elif self.args.data in ['RealWorldRigid', 'NDAX', 'NDAXMotorAngles', 'NDAXv2', \
 						  'RealWorldRigidRobot', 'RealWorldRigidJEEF', 'RealWorldRigidJEEFAbsRelObj',\
-							'RealWorldRigidHuman']:
+							'RealWorldRigidHuman', 'RealWorldRigidHumanNNTransfer']:
 			self.visualizer = DatasetImageVisualizer(args=self.args)
 		else:
 			self.visualizer = ToyDataVisualizer()
@@ -477,7 +477,7 @@ class PolicyManager_BaseClass():
 		# elif self.args.data in ['RealWorldRigid', 'NDAX', 'NDAXMotorAngles', 'NDAXv2']:
 		elif self.args.data in ['RealWorldRigid', 'NDAX', 'NDAXMotorAngles', 'NDAXv2', \
 						  'RealWorldRigidRobot', 'RealWorldRigidJEEF', 'RealWorldRigidJEEFAbsRelObj',\
-							'RealWorldRigidHuman']:
+							'RealWorldRigidHuman', 'RealWorldRigidHumanNNTransfer']:
 			self.visualizer = DatasetImageVisualizer(args=self.args)
 		else: 
 			self.visualizer = ToyDataVisualizer()
@@ -627,7 +627,7 @@ class PolicyManager_BaseClass():
 
 					#######################
 					# Create env for batch.
-					if not(self.args.data in ['RealWorldRigid', 'RealWorldRigidHuman', 'NDAX', 'NDAXMotorAngles','NDAXv2']):
+					if not(self.args.data in ['RealWorldRigid', 'RealWorldRigidHuman', 'RealWorldRigidHumanNNTransfer', 'NDAX', 'NDAXMotorAngles','NDAXv2']):
 						self.per_batch_env_management(data_element[0])
 
 					for b in range(self.args.batch_size):
@@ -769,7 +769,7 @@ class PolicyManager_BaseClass():
 		self.write_results_HTML(plots_or_gif='Plot')
 		
 		viz_embeddings = True
-		if (self.args.data in ['RealWorldRigid', 'RealWorldRigidRobot', 'RealWorldRigidHuman','NDAXv2']) and (self.args.images_in_real_world_dataset==0):
+		if (self.args.data in ['RealWorldRigid', 'RealWorldRigidRobot', 'RealWorldRigidHuman','RealWorldRigidHumanNNTransfer','NDAXv2']) and (self.args.images_in_real_world_dataset==0):
 			viz_embeddings = False
 
 		if viz_embeddings:
@@ -1153,7 +1153,7 @@ class PolicyManager_BaseClass():
 		# For now
 		##############################
 
-		if self.args.data in ['RealWorldRigid', 'NDAXv2', 'RealWorldRigidHuman'] and self.args.images_in_real_world_dataset:
+		if self.args.data in ['RealWorldRigid', 'NDAXv2', 'RealWorldRigidHuman', 'RealWorldRigidHumanNNTransfer'] and self.args.images_in_real_world_dataset:
 			# This should already be segmented to the right start and end point...		
 			self.ground_truth_gif = self.visualizer.visualize_prerendered_gif(indexed_data_element['subsampled_images'], gif_path=self.dir_name, gif_name="Traj_{0}_GIF_GT.gif".format(str(i).zfill(3)))
 		else:			
@@ -1362,7 +1362,11 @@ class PolicyManager_BaseClass():
 		# zoom_factor = 0.5
 
 		# Visualizing more of the images by making them smaller..
-		zoom_factor = 0.3
+		# zoom_factor = 0.3
+
+		# less spaced out..
+		matplotlib.rcParams['figure.figsize'] = [20, 20]			
+		zoom_factor = 0.2
 
 		# Set this parameter to make sure we don't drop frames.
 		matplotlib.rcParams['animation.embed_limit'] = 2**128
@@ -2437,6 +2441,25 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			# Padded dimensions. 
 			self.norm_denom_value[-14:] = 1.
 			self.norm_sub_value[-14:] = 0.
+
+		elif self.args.data in ['RealWorldRigidHumanNNTransfer']:
+
+			self.state_size = 21
+			self.state_dim = 21
+
+			# We deleted 18 dims from hand state
+
+			# Hand orientation. 
+			self.norm_denom_value[21-18:25-18] = 1.
+			self.norm_sub_value[21-18:25-18] = 0. 
+
+			# Object 1 Orientation:
+			self.norm_denom_value[28-18:32-18] = 1.
+			self.norm_sub_value[28-18:32-18] = 0. 
+
+			# Object 2 Orientation. 
+			self.norm_denom_value[35-18:39-18] = 1.
+			self.norm_sub_value[35-18:39-18] = 0. 
 
 
 		self.input_size = 2*self.state_size
@@ -4401,7 +4424,7 @@ class PolicyManager_BatchPretrain(PolicyManager_Pretrain):
 						else:
 							batch_trajectory[x] = data_element['demo'][start_timepoint:end_timepoint,:-1]
 
-					if self.args.data in ['RealWorldRigid', 'RealWorldRigidJEEF', 'RealWorldRigidJEEFAbsRelObj', 'NDAXv2', 'RealWorldRigidHuman'] and self.args.images_in_real_world_dataset:
+					if self.args.data in ['RealWorldRigid', 'RealWorldRigidJEEF', 'RealWorldRigidJEEFAbsRelObj', 'NDAXv2', 'RealWorldRigidHuman', 'RealWorldRigidHumanNNTransfer'] and self.args.images_in_real_world_dataset:
 
 						# Truncate the images to start and end timepoint. 
 						data_element[x]['subsampled_images'] = data_element[x]['images'][start_timepoint:end_timepoint]

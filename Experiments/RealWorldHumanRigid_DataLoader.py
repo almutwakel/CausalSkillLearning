@@ -1127,6 +1127,9 @@ class RealWorldHumanRigid_Dataset(RealWorldHumanRigid_PreDataset):
 				self.downsample_data(data_element, data_element['task-id'], self.args.ds_freq)
 				# data_element = 
 			
+			# Copy over to different key. 
+			data_element['object-state'] = data_element['all-object-state']
+
 			if self.args.smoothen:
 				data_element['demo'] = gaussian_filter1d(data_element['demo'],self.kernel_bandwidth,axis=0,mode='nearest')
 				data_element['hand-state'] = gaussian_filter1d(data_element['hand-state'],self.kernel_bandwidth,axis=0,mode='nearest')
@@ -1136,6 +1139,15 @@ class RealWorldHumanRigid_Dataset(RealWorldHumanRigid_PreDataset):
 			if self.args.data in ['RealWorldHumanRigidHand']:
 				data_element['demo'] = data_element['hand-state']
 			# data_element['environment-name'] = self.environment_names[task_index]
+				
+			if self.args.data in ['RealWorldHumanRigidNNTransfer']:
+				data_element['old_demo'] = copy.deepcopy(data_element['demo'])
+
+				#######################
+				# First construct dummy hand state. 				
+				data_element['dummy_hand_state'] = np.concatenate([data_element['hand-state'][...,-3:], data_element['hand_orientation']], axis=-1)
+				data_element['dummy_object_state'] = data_element['object-state']
+				data_element['demo'] = np.concatenate([data_element['dummy_hand_state'], data_element['dummy_object_state']], axis=-1)
 
 		return data_element
 	
