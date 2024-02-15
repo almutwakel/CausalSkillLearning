@@ -1163,10 +1163,11 @@ class RealWorldHumanRigid_Dataset(Dataset):
 				data_element['old_demo'] = copy.deepcopy(data_element['demo'])
 
 				print("Embed in demo construction")
+				embed()
 				#######################
 				# First construct dummy hand state.				
 				data_element['dummy_hand_state'] = np.concatenate([data_element['hand-state'][...,:3], data_element['hand-state'][...,-4:]], axis=-1)
-				data_element['dummy_object_state'] = data_element['object-state'][...,:14]
+				data_element['dummy_object_state'] = data_element['object-state'][...,:-14]
 				data_element['demo'] = np.concatenate([data_element['dummy_hand_state'], data_element['dummy_object_state']], axis=-1)
 
 		return data_element
