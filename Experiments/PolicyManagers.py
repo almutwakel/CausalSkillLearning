@@ -693,8 +693,8 @@ class PolicyManager_BaseClass():
 						# np.save(os.path.join(self.traj_dir_name, "Rollout_Traj{0}.npy".format(k)), rollout_traj)
 						# np.save(os.path.join(self.z_dir_name, "Latent_Z{0}.npy".format(k)), self.latent_z_set[k])
 												
-						np.save(os.path.join(self.traj_dir_name, "Traj{0}_GT.npy".format(kstr)), gt_traj_tuple)
-						np.save(os.path.join(self.traj_dir_name, "Traj{0}_Rollout.npy".format(kstr)), rollout_traj_tuple)
+						np.save(os.path.join(self.traj_dir_name, "Traj{0}_GT.npy".format(kstr)), np.array(gt_traj_tuple, dtype=object))
+						np.save(os.path.join(self.traj_dir_name, "Traj{0}_Rollout.npy".format(kstr)), np.array(rollout_traj_tuple, dtype=object))
 						np.save(os.path.join(self.z_dir_name, "Traj{0}_Latent_Z.npy".format(kstr)), self.latent_z_set[k])						
 
 				else:
