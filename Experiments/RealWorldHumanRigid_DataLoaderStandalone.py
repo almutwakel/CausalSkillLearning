@@ -874,12 +874,7 @@ class RealWorldHumanRigid_PreDataset(object):
 		self.fuse_keypoint_data(demonstration)
 
 		# Tag data fusion
-		print('#################')
-		print('Temporarily disabling tag fusion')
-		print('#################')
-
-		# self.fuse_tag_data(demonstration)
-
+		self.fuse_tag_data(demonstration)
 
 		#############
 		# 5) Interpolate keypoints, when they don't maintain normal distance between each other (ie normal distance between finger joints of a person)
@@ -1015,8 +1010,8 @@ class RealWorldHumanRigid_PreDataset(object):
 
 			#if self.args.images_in_real_world_dataset:
 			#	suffix = "_wSingleImages"
-			task_numpy_path = os.path.join(self.dataset_directory, self.task_list[task_index], "New_Task_Demo_Array{}_HDImages_NoTagFusion.npy".format(suffix))
-			# task_numpy_path = os.path.join(self.dataset_directory, self.task_list[task_index], "New_Task_Demo_Array{}_HDImages_NewFreq.npy".format(suffix))
+			# task_numpy_path = os.path.join(self.dataset_directory, self.task_list[task_index], "New_Task_Demo_Array{}_HDImages.npy".format(suffix))
+			task_numpy_path = os.path.join(self.dataset_directory, self.task_list[task_index], "New_Task_Demo_Array{}_HDImages_NewFreq_RenableTagFusion.npy".format(suffix))
 			np.save(task_numpy_path, self.task_demo_array)
 
 	def __len__(self):
