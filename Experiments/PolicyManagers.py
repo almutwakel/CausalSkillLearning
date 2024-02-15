@@ -2860,7 +2860,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			os.mkdir(self.dir_name)
 
 		np.save(os.path.join(self.dir_name, "LatentSet.npy") , self.latent_z_set)
-		np.save(os.path.join(self.dir_name, "GT_TrajSet.npy") , self.gt_trajectory_set)
+		np.save(os.path.join(self.dir_name, "GT_TrajSet.npy") , np.array(self.gt_trajectory_set, dtype=object))
 		np.save(os.path.join(self.dir_name, "EmbeddedZSet.npy") , self.embedded_z_dict)
 		np.save(os.path.join(self.dir_name, "TaskIDSet.npy"), self.task_id_set)
 
@@ -3937,8 +3937,8 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			if self.args.batch_size*i+b>=self.N:
 				break
 
-		print("Embed in latent set creation before trajectory error evaluation.")
-		embed()
+		# print("Embed in latent set creation before trajectory error evaluation.")
+		# embed()
 
 		# Compute average reconstruction error.
 		if get_visuals:
