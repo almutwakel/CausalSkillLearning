@@ -125,11 +125,11 @@ class RealWorldHumanRigid_PreDataset(Dataset):
 		else:
 			self.dataset_directory = self.args.datadir			
 		
-		# Require a task list. 
-		# The task name is needed for setting the environment, rendering. 
-		self.task_list = ['Pouring', 'BoxOpening', 'DrawerOpening', 'PickPlace', 'Stirring']		
-		self.environment_names = ['Pouring', 'BoxOpening', 'DrawerOpening', 'PickPlace', 'Stirring']
-		self.num_demos = np.array([5, 6, 6, 10, 10])
+		self.task_list = ['Pouring', 'BoxOpening', 'DrawerOpening', 'Pouring+Stirring', 'DrawerOpening+PickPlace', 'BoxOpening+Pouring', 'PickPlace', 'Stirring']		
+		self.environment_names = ['Pouring', 'BoxOpening', 'DrawerOpening', 'Pouring+Stirring', 'DrawerOpening+PickPlace', 'BoxOpening+Pouring', 'PickPlace', 'Stirring']
+		# self.environment_names = [ 'Pouring', 'BoxOpening', 'DrawerOpening', 'PickPlace', 'Stirring']
+		# self.num_demos = np.array([5, 6, 6, 10, 10])
+		self.num_demos = np.array([5, 6, 6, 6, 6, 6, 10, 10])		
 
 		# Each task has different number of demos according to our Human Dataset.
 		self.number_tasks = len(self.task_list)
@@ -139,8 +139,10 @@ class RealWorldHumanRigid_PreDataset(Dataset):
 		self.total_length = self.num_demos.sum()		
 
 		# self.ds_freq = 1*np.ones(self.number_tasks).astype(int)
-		self.ds_freq = np.array([6, 6, 7, 8, 8])
-
+		# self.ds_freq = np.array([6, 6, 7, 8, 8])
+		# self.ds_freq = np.array([6, 6, 7, 7, 7, 8, 8, 8])
+		self.ds_freq = np.array([4, 5, 6.5, 4, 6, 6, 5.5, 4])
+		
 		# Set files. 
 		self.set_ground_tag_pose_dict()
 		self.setup()	
@@ -610,7 +612,7 @@ class RealWorldHumanRigid_PreDataset(Dataset):
 		number_timepoints = int(demonstration['demo'].shape[0] // ds_freq)
 
 		# for k in demonstration.keys():
-		key_list = ['hand-state', 'all-object-state', 'demo']
+		key_list = ['hand-state', 'all-object-state', 'demo', 'images', 'object-state']
 		#if self.args.images_in_real_world_dataset:
 		# key_list.append('images')
 		for k in key_list:
@@ -1031,6 +1033,7 @@ class RealWorldHumanRigid_Dataset(RealWorldHumanRigid_PreDataset):
 
 			self.dataset_trajectory_lengths[index] = len(data_element['demo'])
 
+		self.ds_freq = np.array([1.5 , 1.2 , 1.0, 1.75, 1.2, 1.3, 1.4, 2.])
 		# Now implementing the dataset trajectory length limits. 
 		######################################################
 		# Now implementing dataset_trajectory_length_limits. 
@@ -1110,30 +1113,27 @@ class RealWorldHumanRigid_Dataset(RealWorldHumanRigid_PreDataset):
 		new_index = index-self.cummulative_num_demos[max(task_index,0)]		
 		data_element = self.files[task_index][new_index]
 
-		resample_length = len(data_element['demo'])//self.args.ds_freq
-		# print("Orig:", len(data_element['demo']),"New length:",resample_length)
-
 		self.kernel_bandwidth = self.args.smoothing_kernel_bandwidth
 		
 		# Trivially adding task ID to data element.
 		data_element['task-id'] = task_index
 		data_element['environment-name'] = self.environment_names[task_index]
 
-		if resample_length<=1 or data_element['hand-state'].shape[0]<=1:
+		if data_element['hand-state'].shape[0]<=1:
 			data_element['is_valid'] = False			
 		else:
 			data_element['is_valid'] = True
 
 			###############################
 			# If we have additional downsampling, do it here. 
-			if self.args.ds_freq>1.:				
-				self.downsample_data(data_element, data_element['task-id'], self.args.ds_freq)
-				# data_element = 
+			# if self.args.ds_freq>1.:					
+			self.downsample_data(data_element, data_element['task-id'])
+			# data_element = 
 			
 			# Copy over to different key. 
 			data_element['object-state'] = data_element['all-object-state']
 
-			if self.args.smoothen:
+			if self.args.smoothen:				
 				data_element['demo'] = gaussian_filter1d(data_element['demo'],self.kernel_bandwidth,axis=0,mode='nearest')
 				data_element['hand-state'] = gaussian_filter1d(data_element['hand-state'],self.kernel_bandwidth,axis=0,mode='nearest')
 				data_element['object-state'] = gaussian_filter1d(data_element['object-state'],self.kernel_bandwidth,axis=0,mode='nearest')

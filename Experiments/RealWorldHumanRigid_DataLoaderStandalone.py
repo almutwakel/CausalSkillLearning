@@ -132,7 +132,7 @@ class RealWorldHumanRigid_PreDataset(object):
 		self.environment_names = ['Pouring', 'BoxOpening', 'DrawerOpening', 'Pouring+Stirring', 'DrawerOpening+PickPlace', 'BoxOpening+Pouring', 'PickPlace', 'Stirring']
 		# self.environment_names = [ 'Pouring', 'BoxOpening', 'DrawerOpening', 'PickPlace', 'Stirring']
 		# self.num_demos = np.array([5, 6, 6, 10, 10])
-		self.num_demos = np.array([5, 6, 6, 6, 6, 6, 10, 10])
+		self.num_demos = np.array([5, 6, 6, 6, 6, 6, 10, 10])		
 
 		# Each task has different number of demos according to our Human Dataset.
 		self.number_tasks = len(self.task_list)
@@ -142,7 +142,8 @@ class RealWorldHumanRigid_PreDataset(object):
 		self.total_length = self.num_demos.sum()		
 
 		# self.ds_freq = 1*np.ones(self.number_tasks).astype(int)
-		self.ds_freq = np.array([6, 6, 7, 7, 7, 8, 8, 8])
+		# self.ds_freq = np.array([6, 6, 7, 7, 7, 8, 8, 8])
+		self.ds_freq = np.array([4, 5, 6.5, 4, 6, 6, 5.5, 4])
 
 		# Set files. 
 		self.set_ground_tag_pose_dict()
