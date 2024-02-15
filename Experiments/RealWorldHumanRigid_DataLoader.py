@@ -1148,7 +1148,6 @@ class RealWorldHumanRigid_Dataset(Dataset):
 			# self.downsample_data(data_element, data_element['task-id'])
 			# self.upsample_data(data_element, data_element['task-id'])
 					
-
 			if self.args.smoothen:				
 				data_element['demo'] = gaussian_filter1d(data_element['demo'],self.kernel_bandwidth,axis=0,mode='nearest')
 				data_element['hand-state'] = gaussian_filter1d(data_element['hand-state'],self.kernel_bandwidth,axis=0,mode='nearest')
@@ -1167,7 +1166,14 @@ class RealWorldHumanRigid_Dataset(Dataset):
 				#######################
 				# First construct dummy hand state.				
 				data_element['dummy_hand_state'] = np.concatenate([data_element['hand-state'][...,:3], data_element['hand-state'][...,-4:]], axis=-1)
-				data_element['dummy_object_state'] = data_element['object-state'][...,:14]
+
+				if data_element['task-id'] == 0:
+					print("TEMPORARILY SWAPPING POURING OBJECTS IN THIS DATALOADER")
+					# OBJECTS ARE SWAPPED FOR POURING.
+					swapped_object_state_indices = np.concatenate([np.arange(7,14), np.arange(0,7), np.arange(14,28)])
+					data_element['object-state'] = data_element['object-state'][...,swapped_object_state_indices]
+
+				data_element['dummy_object_state'] = data_element['object-state'][...,:14]		
 				data_element['demo'] = np.concatenate([data_element['dummy_hand_state'], data_element['dummy_object_state']], axis=-1)
 
 		return data_element
