@@ -1111,8 +1111,8 @@ class RealWorldHumanRigid_Dataset(Dataset):
 		self.files = []
 		for i in range(len(self.task_list)):
 			# "New_Task_Demo_Array{}_HDImages.npy"
-			# self.files.append(np.load("{0}/{1}/New_Task_Demo_Array_HDImages.npy".format(self.dataset_directory, self.task_list[i]), allow_pickle=True))
-			self.files.append(np.load("{0}/{1}/New_Task_Demo_Array_HDImages_NoTagFusion.npy".format(self.dataset_directory, self.task_list[i]), allow_pickle=True))
+			self.files.append(np.load("{0}/{1}/New_Task_Demo_Array_HDImages.npy".format(self.dataset_directory, self.task_list[i]), allow_pickle=True))
+			# self.files.append(np.load("{0}/{1}/New_Task_Demo_Array_HDImages_NoTagFusion.npy".format(self.dataset_directory, self.task_list[i]), allow_pickle=True))
 
 	def __getitem__(self, index):
 
@@ -1167,7 +1167,7 @@ class RealWorldHumanRigid_Dataset(Dataset):
 				#######################
 				# First construct dummy hand state.				
 				data_element['dummy_hand_state'] = np.concatenate([data_element['hand-state'][...,:3], data_element['hand-state'][...,-4:]], axis=-1)
-				data_element['dummy_object_state'] = data_element['object-state'][...,:-14]
+				data_element['dummy_object_state'] = data_element['object-state'][...,:14]
 				data_element['demo'] = np.concatenate([data_element['dummy_hand_state'], data_element['dummy_object_state']], axis=-1)
 
 		return data_element
