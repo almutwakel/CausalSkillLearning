@@ -142,7 +142,7 @@ class RealWorldHumanRigid_PreDataset(Dataset):
 		# self.ds_freq = np.array([6, 6, 7, 8, 8])
 		# self.ds_freq = np.array([6, 6, 7, 7, 7, 8, 8, 8])
 		self.ds_freq = np.array([4, 5, 6.5, 4, 6, 6, 5.5, 4])
-		
+
 		# Set files. 
 		self.set_ground_tag_pose_dict()
 		self.setup()	
@@ -1033,7 +1033,7 @@ class RealWorldHumanRigid_Dataset(RealWorldHumanRigid_PreDataset):
 
 			self.dataset_trajectory_lengths[index] = len(data_element['demo'])
 
-		self.ds_freq = np.array([1.5 , 1.2 , 1.0, 1.75, 1.2, 1.3, 1.4, 2.])
+		# self.ds_freq = 1./np.array([1.5 , 1.2 , 1.0, 1.75, 1.2, 1.3, 1.4, 2.])
 		# Now implementing the dataset trajectory length limits. 
 		######################################################
 		# Now implementing dataset_trajectory_length_limits. 
@@ -1096,7 +1096,7 @@ class RealWorldHumanRigid_Dataset(RealWorldHumanRigid_PreDataset):
 		self.files = []
 		for i in range(len(self.task_list)):
 			# "New_Task_Demo_Array{}_HDImages.npy"
-			# self.files.append(np.load("{0}/{1}/New_Task_Demo_Array_HDImages.npy".format(self.dataset_directory, self.task_list[i]), allow_pickle=True))
+			# self.files.append(np.load("{0}/{1}/New_Task_Demo_Array_HDImages_NewFreq.npy".format(self.dataset_directory, self.task_list[i]), allow_pickle=True))
 			self.files.append(np.load("{0}/{1}/New_Task_Demo_Array_HDImages_NoTagFusion.npy".format(self.dataset_directory, self.task_list[i]), allow_pickle=True))
 
 	def __getitem__(self, index):
@@ -1124,14 +1124,15 @@ class RealWorldHumanRigid_Dataset(RealWorldHumanRigid_PreDataset):
 		else:
 			data_element['is_valid'] = True
 
+			# Copy over to different key. 
+			data_element['object-state'] = data_element['all-object-state']
+
 			###############################
 			# If we have additional downsampling, do it here. 
 			# if self.args.ds_freq>1.:					
-			self.downsample_data(data_element, data_element['task-id'])
-			# data_element = 
-			
-			# Copy over to different key. 
-			data_element['object-state'] = data_element['all-object-state']
+			# self.downsample_data(data_element, data_element['task-id'])
+			# self.upsample_data(data_element, data_element['task-id'])
+					
 
 			if self.args.smoothen:				
 				data_element['demo'] = gaussian_filter1d(data_element['demo'],self.kernel_bandwidth,axis=0,mode='nearest')
