@@ -4395,8 +4395,8 @@ class PolicyManager_BatchPretrain(PolicyManager_Pretrain):
 				# self.current_traj_len = np.random.choice([12,13,14,15,16],p=[0.1,0.2,0.4,0.2,0.1])
 
 				# Switching to more varied trajectory length to make representations more invariant to sampling frequency. 
-				low_value = 10
-				high_value = 20
+				low_value = 8
+				high_value = 25
 				self.current_traj_len = np.random.randint(low_value, high_value)
 
 			else:
