@@ -1162,8 +1162,8 @@ class RealWorldHumanRigid_Dataset(Dataset):
 			if self.args.data in ['RealWorldRigidHumanNNTransfer']:
 				data_element['old_demo'] = copy.deepcopy(data_element['demo'])
 
-				print("Embed in demo construction")
-				embed()
+				# print("Embed in demo construction")
+				# embed()
 				#######################
 				# First construct dummy hand state.				
 				data_element['dummy_hand_state'] = np.concatenate([data_element['hand-state'][...,:3], data_element['hand-state'][...,-4:]], axis=-1)
