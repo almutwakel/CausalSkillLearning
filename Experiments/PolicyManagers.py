@@ -2419,7 +2419,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		elif self.args.data in ['RealWorldRigidHuman']:
 
 			self.state_size = 53
-			self.state_dim = 53			
+			self.state_dim = 53				
 			# set the last few elements of data to be unnoramlized, they're empty for now.. 
 
 			# Hand orientation. 

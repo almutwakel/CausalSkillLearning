@@ -1015,12 +1015,12 @@ class RealWorldHumanRigid_PreDataset(Dataset):
 		return {}	
 
 # class RealWorldHumanRigid_Dataset(RealWorldHumanRigid_PreDataset):
-class RealWorldHumanRigid_Dataset(Dataset):
-	
+class RealWorldHumanRigid_Dataset(Dataset):	
 	def __init__(self, args):
 		
 		# super(RealWorldHumanRigid_Dataset, self).__init__(args)	
 
+		self.args = args
 		self.task_list = [ 'Pouring', 'BoxOpening', 'DrawerOpening', 'PickPlace', 'Stirring']
 		self.environment_names = [ 'Pouring', 'BoxOpening', 'DrawerOpening', 'PickPlace', 'Stirring']
 		self.num_demos = np.array([5, 6, 6, 10, 10])		
@@ -1031,8 +1031,9 @@ class RealWorldHumanRigid_Dataset(Dataset):
 		# [0, 10, 20, 26, 36, 46]
 		self.cummulative_num_demos = np.insert(self.cummulative_num_demos,0,0)		
 		self.total_length = self.num_demos.sum()		
-		self.setup()
 		self.stat_dir_name = 'RealWorldHumanRigid'
+		self.dataset_directory = self.args.datadir
+		self.setup()
 
 		# Now that we've run setup, compute dataset_trajectory_lengths for smart batching.
 		self.dataset_trajectory_lengths = np.zeros(self.total_length)
@@ -1110,8 +1111,8 @@ class RealWorldHumanRigid_Dataset(Dataset):
 		self.files = []
 		for i in range(len(self.task_list)):
 			# "New_Task_Demo_Array{}_HDImages.npy"
-			# self.files.append(np.load("{0}/{1}/New_Task_Demo_Array_HDImages_NewFreq.npy".format(self.dataset_directory, self.task_list[i]), allow_pickle=True))
-			self.files.append(np.load("{0}/{1}/New_Task_Demo_Array_HDImages_NoTagFusion.npy".format(self.dataset_directory, self.task_list[i]), allow_pickle=True))
+			self.files.append(np.load("{0}/{1}/New_Task_Demo_Array_HDImages.npy".format(self.dataset_directory, self.task_list[i]), allow_pickle=True))
+			# self.files.append(np.load("{0}/{1}/New_Task_Demo_Array_HDImages_NoTagFusion.npy".format(self.dataset_directory, self.task_list[i]), allow_pickle=True))
 
 	def __getitem__(self, index):
 
@@ -1173,6 +1174,9 @@ class RealWorldHumanRigid_Dataset(Dataset):
 	#### Needs to be edited --- self.state_size
 	###################################
 	
+	def __len__(self):
+		return self.total_length
+
 	def compute_statistics(self, prefix='RealWorldHumanRigid'):
 
 		if prefix=='RealWorldHumanRigid':
