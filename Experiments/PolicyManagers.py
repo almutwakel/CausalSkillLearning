@@ -4380,7 +4380,7 @@ class PolicyManager_BatchPretrain(PolicyManager_Pretrain):
 
 			return concatenated_traj.transpose((1,0,2)), sample_action_seq.transpose((1,0,2)), sample_traj.transpose((1,0,2))
 				
-				
+
 		elif self.args.data in global_dataset_list:
 
 			if self.args.data in ['MIME','OldMIME'] or self.args.data=='Mocap':
@@ -4392,7 +4392,13 @@ class PolicyManager_BatchPretrain(PolicyManager_Pretrain):
 			# If allowing variable skill length, set length for this sample.				
 			if self.args.var_skill_length:
 				# Choose length of 12-16 with certain probabilities. 
-				self.current_traj_len = np.random.choice([12,13,14,15,16],p=[0.1,0.2,0.4,0.2,0.1])
+				# self.current_traj_len = np.random.choice([12,13,14,15,16],p=[0.1,0.2,0.4,0.2,0.1])
+
+				# Switching to more varied trajectory length to make representations more invariant to sampling frequency. 
+				low_value = 10
+				high_value = 20
+				self.current_traj_len = np.random.randint(low_value, high_value)
+
 			else:
 				self.current_traj_len = self.traj_length            
 			
