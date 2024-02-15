@@ -1020,6 +1020,18 @@ class RealWorldHumanRigid_Dataset(RealWorldHumanRigid_PreDataset):
 		
 		super(RealWorldHumanRigid_Dataset, self).__init__(args)	
 
+		self.task_list = [ 'Pouring', 'BoxOpening', 'DrawerOpening', 'PickPlace', 'Stirring']
+		self.environment_names = [ 'Pouring', 'BoxOpening', 'DrawerOpening', 'PickPlace', 'Stirring']
+		self.num_demos = np.array([5, 6, 6, 10, 10])		
+
+		# Each task has different number of demos according to our Human Dataset.
+		self.number_tasks = len(self.task_list)
+		self.cummulative_num_demos = self.num_demos.cumsum()
+		# [0, 10, 20, 26, 36, 46]
+		self.cummulative_num_demos = np.insert(self.cummulative_num_demos,0,0)		
+		self.total_length = self.num_demos.sum()		
+
+
 		# Now that we've run setup, compute dataset_trajectory_lengths for smart batching.
 		self.dataset_trajectory_lengths = np.zeros(self.total_length)
 		for index in range(self.total_length):
