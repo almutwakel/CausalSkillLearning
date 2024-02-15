@@ -1031,7 +1031,8 @@ class RealWorldHumanRigid_Dataset(Dataset):
 		# [0, 10, 20, 26, 36, 46]
 		self.cummulative_num_demos = np.insert(self.cummulative_num_demos,0,0)		
 		self.total_length = self.num_demos.sum()		
-
+		self.setup()
+		self.stat_dir_name = 'RealWorldHumanRigid'
 
 		# Now that we've run setup, compute dataset_trajectory_lengths for smart batching.
 		self.dataset_trajectory_lengths = np.zeros(self.total_length)
