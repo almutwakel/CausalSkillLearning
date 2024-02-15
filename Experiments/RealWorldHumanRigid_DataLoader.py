@@ -1014,11 +1014,12 @@ class RealWorldHumanRigid_PreDataset(Dataset):
 
 		return {}	
 
-class RealWorldHumanRigid_Dataset(RealWorldHumanRigid_PreDataset):
+# class RealWorldHumanRigid_Dataset(RealWorldHumanRigid_PreDataset):
+class RealWorldHumanRigid_Dataset(Dataset):
 	
 	def __init__(self, args):
 		
-		super(RealWorldHumanRigid_Dataset, self).__init__(args)	
+		# super(RealWorldHumanRigid_Dataset, self).__init__(args)	
 
 		self.task_list = [ 'Pouring', 'BoxOpening', 'DrawerOpening', 'PickPlace', 'Stirring']
 		self.environment_names = [ 'Pouring', 'BoxOpening', 'DrawerOpening', 'PickPlace', 'Stirring']
