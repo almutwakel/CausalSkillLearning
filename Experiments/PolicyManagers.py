@@ -4380,6 +4380,7 @@ class PolicyManager_BatchPretrain(PolicyManager_Pretrain):
 
 			return concatenated_traj.transpose((1,0,2)), sample_action_seq.transpose((1,0,2)), sample_traj.transpose((1,0,2))
 				
+				
 		elif self.args.data in global_dataset_list:
 
 			if self.args.data in ['MIME','OldMIME'] or self.args.data=='Mocap':
