@@ -3523,8 +3523,8 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		self.compute_auxillary_losses(update_dict)
 		self.total_loss = (self.likelihood_loss + self.kl_weight*self.encoder_KL + self.aux_loss) 
 	
-		print("Embedding in Update subpolicies.")
-		embed()
+		# print("Embedding in Update subpolicies.")
+		# embed()
 
 		if self.args.debug:
 			print("Embedding in Update subpolicies.")
@@ -3673,10 +3673,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			
 			####################################
 			########## (2) & (3) ##########
-			####################################
-
-			# print("Embed in rut iter")
-			# embed()
+			####################################		
 
 			# Feed latent z and trajectory segment into policy network and evaluate likelihood. 
 			latent_z_seq, latent_b = self.construct_dummy_latents(latent_z)
@@ -3707,7 +3704,9 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 				update_dict = input_dict
 				update_dict['latent_z'] = latent_z				
 
-				self.update_policies_reparam(loglikelihood, kl_divergence, update_dict=update_dict)
+				print("Embed in Run ITer")
+				embed()
+				self.update_policies_reparam(loglikelihood, kl_divergence, update_dict=update_dict, input_dict=)
 
 				####################################
 				# (4b) Update Plots. 
