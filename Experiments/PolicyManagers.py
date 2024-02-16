@@ -2345,6 +2345,9 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 					self.norm_denom_value[17:] = 1.   # second obj
 					self.norm_sub_value[10:14] = 0.
 					self.norm_sub_value[17:] = 0.
+			
+			print("Embed in RWR")
+			embed()
 
 		elif self.args.data in ['RealWorldRigidJEEF']:
 
@@ -2459,6 +2462,9 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			# Object 2 Orientation. 
 			self.norm_denom_value[35-18:39-18] = 1.
 			self.norm_sub_value[35-18:39-18] = 0. 
+
+			print("Embed in H2R transfer")
+			embed()
 
 		self.input_size = 2*self.state_size
 		self.hidden_size = self.args.hidden_size
