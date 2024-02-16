@@ -2346,9 +2346,6 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 					self.norm_sub_value[10:14] = 0.
 					self.norm_sub_value[17:] = 0.
 			
-			print("Embed in RWR")
-			embed()
-
 		elif self.args.data in ['RealWorldRigidJEEF']:
 
 			self.state_size = 28
@@ -2450,6 +2447,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			norm_indices = np.concatenate([ np.arange(0,3), np.arange(21,25), np.arange(25, 39)])
 			self.norm_sub_value = self.norm_sub_value[norm_indices]
 			self.norm_denom_value = self.norm_denom_value[norm_indices]
+			self.norm_denom_value /= self.state_scale_factor
 
 			# Hand orientation. 
 			self.norm_denom_value[21-18:25-18] = 1.
@@ -2461,10 +2459,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 
 			# Object 2 Orientation. 
 			self.norm_denom_value[35-18:39-18] = 1.
-			self.norm_sub_value[35-18:39-18] = 0. 
-
-			print("Embed in H2R transfer")
-			embed()
+			self.norm_sub_value[35-18:39-18] = 0. 		
 
 		self.input_size = 2*self.state_size
 		self.hidden_size = self.args.hidden_size
