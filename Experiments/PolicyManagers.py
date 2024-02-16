@@ -2734,6 +2734,10 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			log_dict['Auxillary Env Effect Traj Loss'] = self.auxillary_env_effect_traj_loss
 			log_dict['Env Effect Traj Distance Threshold'] = self.auxillary_z_env_effect_distance_threshold
 
+		if self.args.jacobian_regularizer_loss_weight>0.:
+			log_dict['Unweighted Jacobian Regularizer Loss'] = self.unweighted_auxillary_jacobian_regularizer_loss
+			log_dict['Jacobian Regularizer Loss'] = self.auxillary_jacobian_regularizer_loss 
+
 		if counter%self.args.display_freq==0:
 			
 			if self.args.batch_size>1:
