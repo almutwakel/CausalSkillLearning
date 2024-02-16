@@ -2447,7 +2447,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			norm_indices = np.concatenate([ np.arange(0,3), np.arange(21,25), np.arange(25, 39)])
 			self.norm_sub_value = self.norm_sub_value[norm_indices]
 			self.norm_denom_value = self.norm_denom_value[norm_indices]
-			self.norm_denom_value /= self.state_scale_factor
+			self.norm_denom_value /= self.args.state_scale_factor
 
 			# Hand orientation. 
 			self.norm_denom_value[21-18:25-18] = 1.
