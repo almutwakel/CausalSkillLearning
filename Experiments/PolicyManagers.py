@@ -3521,11 +3521,10 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		self.encoder_KL = encoder_KL.mean()
 
 		self.compute_auxillary_losses(update_dict)
-		# Adding a penalty for link lengths. 
-		# self.link_length_loss = ... 
-
 		self.total_loss = (self.likelihood_loss + self.kl_weight*self.encoder_KL + self.aux_loss) 
-		# + self.link_length_loss) 
+	
+		print("Embedding in Update subpolicies.")
+		embed()
 
 		if self.args.debug:
 			print("Embedding in Update subpolicies.")
