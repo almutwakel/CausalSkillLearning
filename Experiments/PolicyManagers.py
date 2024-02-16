@@ -2637,8 +2637,8 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 				# If we are still in the initial phase of training, don't use the aux_zenv_loss_weight or the task based aux loss.
 				self.aux_env_effect_traj_loss_weight = 0.
 				self.aux_env_effect_z_loss_weight = 0.
-				self.aux_task_based_loss_weight = 0.				
-
+				# self.aux_task_based_loss_weight = 0.				
+				self.aux_task_based_loss_weight = self.args.task_based_aux_loss_weight
 		# Cyclic KL.
 		elif self.args.kl_schedule=='Cyclic':
 
