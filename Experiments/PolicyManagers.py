@@ -3149,7 +3149,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		
 		self.jacobian_regularizer = jacobian.JacobianReg()
 		self.unweighted_auxillary_jacobian_regularizer_loss = self.jacobian_regularizer(update_dict['input_torch_trajectory'], update_dict['latent_z'][0])
-		self.auxillary_jacobian_regularizer_loss = self.jacobian_regularizer_loss_weight*self.unweighted_auxillary_jacobian_regularizer_loss
+		self.auxillary_jacobian_regularizer_loss = self.args.jacobian_regularizer_loss_weight*self.unweighted_auxillary_jacobian_regularizer_loss
 
 	def compute_relative_state_class_vectors(self, update_dict):
 
