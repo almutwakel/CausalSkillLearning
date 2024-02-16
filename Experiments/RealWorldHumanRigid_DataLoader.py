@@ -1113,7 +1113,8 @@ class RealWorldHumanRigid_Dataset(Dataset):
 			# "New_Task_Demo_Array{}_HDImages.npy"
 			# self.files.append(np.load("{0}/{1}/New_Task_Demo_Array_HDImages.npy".format(self.dataset_directory, self.task_list[i]), allow_pickle=True))
 			# self.files.append(np.load("{0}/{1}/New_Task_Demo_Array_HDImages_NoTagFusion.npy".format(self.dataset_directory, self.task_list[i]), allow_pickle=True))
-			self.files.append(np.load("{0}/{1}/New_Task_Demo_Array_HDImages_NewFreq_RenableTagFusion.npy".format(self.dataset_directory, self.task_list[i]), allow_pickle=True))
+			# self.files.append(np.load("{0}/{1}/New_Task_Demo_Array_HDImages_NewFreq_RenableTagFusion.npy".format(self.dataset_directory, self.task_list[i]), allow_pickle=True))			
+			self.files.append(np.load("{0}/{1}/New_Task_Demo_Array_HDImages_ReorderedObjects.npy".format(self.dataset_directory, self.task_list[i]), allow_pickle=True))
 			
 
 	def __getitem__(self, index):
