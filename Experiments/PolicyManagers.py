@@ -3723,9 +3723,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 				update_dict = input_dict
 				update_dict['latent_z'] = latent_z			
 				update_dict['input_torch_trajectory']	= torch_traj_seg
-
-				print("Embed in Run Iteration")
-				embed()
+				
 				self.update_policies_reparam(loglikelihood, kl_divergence, update_dict=update_dict)
 
 				####################################
