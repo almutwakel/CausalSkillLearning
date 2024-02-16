@@ -3666,6 +3666,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			####################################
 
 			torch_traj_seg = torch.tensor(state_action_trajectory).to(device).float()
+			torch_traj_seg.requires_grad = True
 			# Encode trajectory segment into latent z. 		
 						
 			latent_z, encoder_loglikelihood, encoder_entropy, kl_divergence = self.encoder_network.forward(torch_traj_seg, self.epsilon, positional_encoding_offsets=self.batch_segment_indices)
@@ -3704,7 +3705,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 				update_dict = input_dict
 				update_dict['latent_z'] = latent_z				
 
-				print("Embed in Run ITer")
+				print("Embed in Run Iteration")
 				embed()
 				self.update_policies_reparam(loglikelihood, kl_divergence, update_dict=update_dict)
 
