@@ -3706,7 +3706,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 
 				print("Embed in Run ITer")
 				embed()
-				self.update_policies_reparam(loglikelihood, kl_divergence, update_dict=update_dict, input_dict=)
+				self.update_policies_reparam(loglikelihood, kl_divergence, update_dict=update_dict)
 
 				####################################
 				# (4b) Update Plots. 
