@@ -153,8 +153,13 @@ class RealWorldHumanRigid_PreDataset(object):
 
 	def tag_preprocessing(self, cam_tag_detections=None, task_name=None):
 		
-		expected_tags = {'Pouring':[0,2,6], 'Stirring':[0,3,6], 'BoxOpening':[0,1,2], 'DrawerOpening':[0,1,2], 'PickPlace':[0,1,2], 
-					     'BoxOpening+Pouring':[0,1,2,6], 'DrawerOpening+PickPlace':[0,1,2,6], 'Pouring+Stirring':[0,2,3,6], 
+		# expected_tags = {'Pouring':[0,2,6], 'Stirring':[0,3,6], 'BoxOpening':[0,1,2], 'DrawerOpening':[0,1,2], 'PickPlace':[0,1,2], 
+		# 			     'BoxOpening+Pouring':[0,1,2,6], 'DrawerOpening+PickPlace':[0,1,2,6], 'Pouring+Stirring':[0,2,3,6], 
+		# 			     'BoxOpening+Pouring+Stirring':[0,1,2,3,6]}
+		
+		# Re ordered expected tags.
+		expected_tags = {'Pouring':[0,6,2], 'Stirring':[0,3,6], 'BoxOpening':[0,1,2], 'DrawerOpening':[0,1,2], 'PickPlace':[0,1,2], 
+					     'BoxOpening+Pouring':[0,6,1,2], 'DrawerOpening+PickPlace':[0,1,2,6], 'Pouring+Stirring':[0,6,3,2], 
 					     'BoxOpening+Pouring+Stirring':[0,1,2,3,6]}
 
 		# 0) If number of expected_tags is not 5, then add dummy tags (-1, -2, -3 ...)
