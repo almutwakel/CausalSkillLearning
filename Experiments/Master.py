@@ -453,9 +453,13 @@ def parse_arguments():
 	parser.add_argument('--task_based_aux_loss_weight', dest='task_based_aux_loss_weight', type=float, default=0., help='Weight to place on task based auxillary loss.')	
 	parser.add_argument('--pairwise_z_distance_threshold', dest='pairwise_z_distance_threshold', type=float, default=2., help='Minimum distance to push apart different parts of latent space that are semantically different.')
 	
+	# Encoder jacobian regularizer. 
+	parser.add_argument('--jacobian_regularizer_loss_weight', dest='jacobian_regularizer_loss_weight', type=float, default=0., help='Weight to apply to jacobian regularizer weight.')
+
 	# Auxillary Z_env effect loss. 
 	parser.add_argument('--positive_z_distance_margin', dest='positive_z_distance_margin', type=float, default=1., help='Positive Component Distance Margin')
 	parser.add_argument('--negative_z_distance_margin', dest='negative_z_distance_margin', type=float, default=5., help='Negative Component Distance Margin')
+
 	# Setting parameters for linear annealing of Distance Threshold for this Z_Env loss.
 	parser.add_argument('--initial_z_distance_threshold',dest='initial_z_distance_threshold',type=float,default=2.)
 	parser.add_argument('--final_z_distance_threshold',dest='final_z_distance_threshold',type=float,default=1.)	

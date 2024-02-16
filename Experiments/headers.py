@@ -42,6 +42,7 @@ import h5py
 import time
 import unittest
 import cProfile
+import jacobian
 
 from scipy import stats, signal
 from scipy.interpolate import interp1d

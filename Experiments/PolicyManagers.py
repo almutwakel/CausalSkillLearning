@@ -3092,6 +3092,10 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		self.unweighted_auxillary_env_effect_traj_loss = 0.
 		self.auxillary_env_effect_traj_loss = 0.
 
+		# 
+		self.unweighted_auxillary_jacobian_regularizer_loss = 0.
+		self.auxillary_jacobian_regularizer_loss = 0.
+
 	def compute_auxillary_losses(self, update_dict):
 
 		self.initialize_aux_losses()
@@ -3128,10 +3132,20 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		if self.args.cummulative_computed_state_reconstruction_loss_weight>0. or self.args.teacher_forced_state_reconstruction_loss_weight>0.:
 			self.compute_absolute_state_reconstruction_loss()
 
+		# Jacobian regularizer. 
+		if self.args.jacobian_regularizer_loss_weight>0.:
+			self.compute_jacobian_regularizer_loss(update_dict)
+
 		# Weighting the auxillary loss...
 		self.aux_loss = self.relative_state_reconstruction_loss + self.relative_state_phase_aux_loss \
 			  + self.task_based_aux_loss + self.absolute_state_reconstruction_loss + self.auxillary_z_env_effect_z_loss \
-				+ self.auxillary_env_effect_traj_loss
+				+ self.auxillary_env_effect_traj_loss + self.auxillary_jacobian_regularizer_loss
+
+	def compute_jacobian_regularizer_loss(self, update_dict):
+		
+		self.jacobian_regularizer = jacobian.JacobianReg
+		self.unweighted_auxillary_jacobian_regularizer_loss = self.jacobian_regularizer(update_dict['input_torch_trajectory'], update_dict['latent_z'][0])
+		self.auxillary_jacobian_regularizer_loss = self.jacobian_regularizer_loss_weight*self.unweighted_auxillary_jacobian_regularizer_loss
 
 	def compute_relative_state_class_vectors(self, update_dict):
 
@@ -3703,7 +3717,8 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 				####################################
 				
 				update_dict = input_dict
-				update_dict['latent_z'] = latent_z				
+				update_dict['latent_z'] = latent_z			
+				update_dict['input_torch_trajectory']	= torch_traj_seg
 
 				print("Embed in Run Iteration")
 				embed()
