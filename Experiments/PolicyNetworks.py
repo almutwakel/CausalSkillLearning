@@ -2524,10 +2524,10 @@ class ContinuousEncoderNetwork(PolicyNetwork_BaseClass):
 		# Forward pass through LSTM. 
 		##############################
 			
-		# print("Temporarily disabling CUDNN for LSTM, for double backward")		
-		# with torch.backends.cudnn.flags(enabled=False):    
-		# 	outputs, hidden = network_dict['lstm'](posembed_input)
-		outputs, hidden = network_dict['lstm'](posembed_input)
+		print("Temporarily disabling CUDNN for LSTM, for double backward")		
+		with torch.backends.cudnn.flags(enabled=False):    
+			outputs, hidden = network_dict['lstm'](posembed_input)
+		# outputs, hidden = network_dict['lstm'](posembed_input)
 		concatenated_outputs = torch.cat([outputs[0,:,self.hidden_size:],outputs[-1,:,:self.hidden_size]],dim=-1).view((1,batch_size,-1))
 
 		##############################
