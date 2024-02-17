@@ -459,6 +459,8 @@ def parse_arguments():
 	# Auxillary Z_env effect loss. 
 	parser.add_argument('--positive_z_distance_margin', dest='positive_z_distance_margin', type=float, default=1., help='Positive Component Distance Margin')
 	parser.add_argument('--negative_z_distance_margin', dest='negative_z_distance_margin', type=float, default=5., help='Negative Component Distance Margin')
+	parser.add_argument('--task_positive_z_distance_margin', dest='task_positive_z_distance_margin', type=float, default=1., help='Positive Component Distance Margin For Task Loss')
+	parser.add_argument('--task_negative_z_distance_margin', dest='task_negative_z_distance_margin', type=float, default=5., help='Negative Component Distance Margin For Task Loss')
 
 	# Setting parameters for linear annealing of Distance Threshold for this Z_Env loss.
 	parser.add_argument('--initial_z_distance_threshold',dest='initial_z_distance_threshold',type=float,default=2.)

@@ -3265,8 +3265,8 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			# Now compute distances of this across the batch. 
 			z_distances = torch.cdist(relative_zR_zE_vector, relative_zR_zE_vector)
 
-		unmasked_task_based_aux_loss_positive_component = torch.clamp(z_distances, min=self.args.positive_z_distance_margin)
-		unmasked_task_based_aux_loss_negative_component = torch.clamp(self.args.negative_z_distance_margin - z_distances, min=0.)
+		unmasked_task_based_aux_loss_positive_component = torch.clamp(z_distances, min=self.args.task_positive_z_distance_margin)
+		unmasked_task_based_aux_loss_negative_component = torch.clamp(self.args.task_negative_z_distance_margin - z_distances, min=0.)
 
 		self.masked_task_based_aux_loss_positive_component = (positive_triangularized_mask*unmasked_task_based_aux_loss_positive_component).mean()
 		self.masked_task_based_aux_loss_negative_component = (negative_triangularized_mask*unmasked_task_based_aux_loss_negative_component).mean()
