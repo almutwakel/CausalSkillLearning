@@ -3367,7 +3367,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		# Select the position of the first object for the trajectory based loss. 
 		##############################
 
-		object_torch_traj = torch.from_numpy(update_dict['sample_traj'][..., self.args.robot_state_size:self.args.robot_state_size+3]).cuda()
+		object_torch_traj = torch.from_numpy(update_dict['sample_traj'][..., self.args.robot_state_size:self.args.robot_state_size+3]).to(device)
 		
 		# Normalize trajectory w.r.t. initial state. 
 		normalized_object_torch_traj = object_torch_traj - object_torch_traj[0]

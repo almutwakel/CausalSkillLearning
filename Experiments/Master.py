@@ -324,8 +324,7 @@ def parse_arguments():
 	parser.add_argument('--replace_samples', dest='replace_samples',type=bool,default=False,help='Use replace=true when sampling trajectories for training.')
 
 	# Training setting. 
-	parser.add_argument('--discrete_z',dest='discrete_z',type=int,default=0)
-	# parser.add_argument('--transformer',dest='transformer',type=int,default=0)	
+	parser.add_argument('--discrete_z',dest='discrete_z',type=int,default=0)	
 	parser.add_argument('--z_dimensions',dest='z_dimensions',type=int,default=64)
 	parser.add_argument('--number_layers',dest='number_layers',type=int,default=5)
 	parser.add_argument('--hidden_size',dest='hidden_size',type=int,default=64)
@@ -437,7 +436,8 @@ def parse_arguments():
 	parser.add_argument('--kl_begin_increment_epochs',dest='kl_begin_increment_epochs',type=int,default=100,help='Number of epochs after which to increment KL.')
 	parser.add_argument('--kl_cyclic_phase_epochs',dest='kl_cyclic_phase_epochs',type=int,default=100,help='Number of epochs to cycle KL weight over.')	
 
-	# architecture
+	# architecture	
+	parser.add_argument('--transformer_encoder',dest='transformer_encoder',type=int,default=0,help='Whether or not to use a transformer encoder instead of an LSTM.')	
 	parser.add_argument('--split_stream_encoder',dest='split_stream_encoder',type=int,default=0,help='Whether to use split stream encoder or not.')
 	parser.add_argument('--embedding_visualization_stream',dest='embedding_visualization_stream',type=str,default=None,help='Which stream to use to embed and visualize Z space.')
 	parser.add_argument('--robot_state_size',dest='robot_state_size',type=int,default=8,help='Default robot state size.')
