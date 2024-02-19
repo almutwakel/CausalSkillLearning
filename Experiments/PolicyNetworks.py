@@ -2469,6 +2469,8 @@ class ContinuousEncoderNetwork(PolicyNetwork_BaseClass):
 
 			# TransformerEncoderLayer(d_model=4, nhead=4, dropout=0., dim_feedforward=24).cuda()
 
+			print("Embed before defining transf")
+			embed()
 			# if int(torch.__version__[0])>1:			
 				# self.transformer_encoder_layer = torch.nn.TransformerEncoderLayer(d_model=output_size, nhead=4, dropout=self.args.dropout, batch_first=False, dim_feedforward=self.hidden_size).to(device)
 			# else:
