@@ -2468,8 +2468,11 @@ class ContinuousEncoderNetwork(PolicyNetwork_BaseClass):
 		if self.args.transformer_encoder:
 
 			# TransformerEncoderLayer(d_model=4, nhead=4, dropout=0., dim_feedforward=24).cuda()
-			# self.transformer_encoder_layer = torch.nn.TransformerEncoderLayer(d_model=output_size, nhead=4, dropout=self.args.dropout, batch_first=False, dim_feedforward=self.hidden_size).to(device)
-			self.transformer_encoder_layer = torch.nn.TransformerEncoderLayer(d_model=output_size, nhead=4, dropout=self.args.dropout, dim_feedforward=self.hidden_size).to(device)
+
+			if int(torch.__version__[0])>1:			
+				self.transformer_encoder_layer = torch.nn.TransformerEncoderLayer(d_model=output_size, nhead=4, dropout=self.args.dropout, batch_first=False, dim_feedforward=self.hidden_size).to(device)
+			else:
+				self.transformer_encoder_layer = torch.nn.TransformerEncoderLayer(d_model=output_size, nhead=4, dropout=self.args.dropout, dim_feedforward=self.hidden_size).to(device)
 			self.transformer_encoder = torch.nn.TransformerEncoder(encoder_layer=self.transformer_encoder_layer, num_layers=6).to(device)
 			sequence_model = self.transformer_encoder
 
