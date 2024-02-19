@@ -2465,18 +2465,31 @@ class ContinuousEncoderNetwork(PolicyNetwork_BaseClass):
 		else:
 			lstm_input_size = input_size
 		
-		lstm = torch.nn.LSTM(input_size=lstm_input_size, hidden_size=self.hidden_size, num_layers=self.num_layers, bidirectional=True, dropout=self.args.dropout).to(device)
+		if self.args.transformer_encoder:
 
-		# Define output layers for the LSTM, and activations for this output layer. 
-		mean_output_layer = torch.nn.Linear(2*self.hidden_size, output_size).to(device)
-		variances_output_layer = torch.nn.Linear(2*self.hidden_size, output_size).to(device)		
+			# TransformerEncoderLayer(d_model=4, nhead=4, dropout=0., dim_feedforward=24).cuda()
+			# self.transformer_encoder_layer = torch.nn.TransformerEncoderLayer(d_model=output_size, nhead=4, dropout=self.args.dropout, batch_first=False, dim_feedforward=self.hidden_size).to(device)
+			self.transformer_encoder_layer = torch.nn.TransformerEncoderLayer(d_model=output_size, nhead=4, dropout=self.args.dropout, dim_feedforward=self.hidden_size).to(device)
+			self.transformer_encoder = torch.nn.TransformerEncoder(encoder_layer=self.transformer_encoder_layer, num_layers=6).to(device)
+			sequence_model = self.transformer_encoder
 
-		return lstm, mean_output_layer, variances_output_layer, state_representation_layer
+			# Define output layers for the LSTM, and activations for this output layer. 
+			mean_output_layer = torch.nn.Linear(output_size, output_size).to(device)
+			variances_output_layer = torch.nn.Linear(output_size, output_size).to(device)		
+
+		else:
+			sequence_model = torch.nn.LSTM(input_size=lstm_input_size, hidden_size=self.hidden_size, num_layers=self.num_layers, bidirectional=True, dropout=self.args.dropout).to(device)
+
+			# Define output layers for the LSTM, and activations for this output layer. 
+			mean_output_layer = torch.nn.Linear(2*self.hidden_size, output_size).to(device)
+			variances_output_layer = torch.nn.Linear(2*self.hidden_size, output_size).to(device)		
+
+		return sequence_model, mean_output_layer, variances_output_layer, state_representation_layer
 
 	def instantiate_networks(self):
 
 		self.network_dict = torch.nn.ModuleDict()
-		self.network_dict['lstm'], self.network_dict['mean_output_layer'], self.network_dict['variances_output_layer'], self.network_dict['state_representation_layer'] = self.define_networks(self.size_dict['input_size'], self.size_dict['output_size']) 
+		self.network_dict['sequence_model'], self.network_dict['mean_output_layer'], self.network_dict['variances_output_layer'], self.network_dict['state_representation_layer'] = self.define_networks(self.size_dict['input_size'], self.size_dict['output_size']) 
 
 		if self.args.positional_encoding:
 			if self.args.state_representation_layer: 
@@ -2526,14 +2539,19 @@ class ContinuousEncoderNetwork(PolicyNetwork_BaseClass):
 			
 		# print("Temporarily disabling CUDNN for LSTM, for double backward")		
 		# with torch.backends.cudnn.flags(enabled=False):    
-		# 	outputs, hidden = network_dict['lstm'](posembed_input)
-		outputs, hidden = network_dict['lstm'](posembed_input)
-		concatenated_outputs = torch.cat([outputs[0,:,self.hidden_size:],outputs[-1,:,:self.hidden_size]],dim=-1).view((1,batch_size,-1))
+		# 	outputs, hidden = network_dict['sequence_model'](posembed_input)
+			
+		if self.args.transformer_encoder:
+			outputs = network_dict['sequence_model'](posembed_input)
+			# For the transformer encoder, just take last value. 
+			concatenated_outputs = outputs[-1].view(1, batch_size, -1)
+		else:			
+			outputs, hidden = network_dict['sequence_model'](posembed_input)
+			concatenated_outputs = torch.cat([outputs[0,:,self.hidden_size:],outputs[-1,:,:self.hidden_size]],dim=-1).view((1,batch_size,-1))
 
 		##############################
 		# Predict Gaussian means and variances. 
 		##############################
-
 		mean_outputs = network_dict['mean_output_layer'](concatenated_outputs)
 
 		# if self.args.constant_variance:
@@ -2630,12 +2648,12 @@ class ContinuousFactoredEncoderNetwork(ContinuousEncoderNetwork):
 
 		# Define networks for robot stream.
 		self.robot_network_dict = torch.nn.ModuleDict()
-		self.robot_network_dict['lstm'], self.robot_network_dict['mean_output_layer'], self.robot_network_dict['variances_output_layer'], self.robot_network_dict['state_representation_layer'] = self.define_networks(self.robot_size_dict['input_size'], self.robot_size_dict['output_size'])
+		self.robot_network_dict['sequence_model'], self.robot_network_dict['mean_output_layer'], self.robot_network_dict['variances_output_layer'], self.robot_network_dict['state_representation_layer'] = self.define_networks(self.robot_size_dict['input_size'], self.robot_size_dict['output_size'])
 		self.robot_network_dict['positional_encoding_layer'] = PositionalEncoding(robot_pos_emb_input_size)
 		
 		# Define networks for environment stream.
 		self.env_network_dict = torch.nn.ModuleDict()
-		self.env_network_dict['lstm'], self.env_network_dict['mean_output_layer'], self.env_network_dict['variances_output_layer'], self.env_network_dict['state_representation_layer'] = self.define_networks(self.env_size_dict['input_size'], self.env_size_dict['output_size'])
+		self.env_network_dict['sequence_model'], self.env_network_dict['mean_output_layer'], self.env_network_dict['variances_output_layer'], self.env_network_dict['state_representation_layer'] = self.define_networks(self.env_size_dict['input_size'], self.env_size_dict['output_size'])
 		self.env_network_dict['positional_encoding_layer'] = PositionalEncoding(env_pos_emb_input_size)		
 
 	def split_stream_inputs(self, input):
