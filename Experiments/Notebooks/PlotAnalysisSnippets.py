@@ -3,17 +3,22 @@ for k in range(len(self.dataset)):
     print(k, isz)
 
 cd /scratch/cchawla/TrainingLogs/
-mkdir HumanCompDatasetAnalysis/
-cd HumanCompDatasetAnalysis/
+mkdir HumanCompPostProcDatasetAnalysis/
 
-indices = np.concatenate([np.arange(0,3), np.arange(7,10), np.arange(14,17)])
-object_legend = ['o1x', 'o1y', 'o1z', 'o2x', 'o2y', 'o2z', 'o3x', 'o3y', 'o3z']
+cd HumanCompPostProcDatasetAnalysis/
+
+# indices = np.concatenate([np.arange(0,3), np.arange(7,10), np.arange(14,17)])
+indices = np.concatenate([np.arange(0,3), np.arange(7,10)])
+# np.arange(14,17)])
+# object_legend = ['o1x', 'o1y', 'o1z', 'o2x', 'o2y', 'o2z', 'o3x', 'o3y', 'o3z']
+object_legend = ['o1x', 'o1y', 'o1z', 'o2x', 'o2y', 'o2z']
 
 for k in range(len(self.dataset)):
 	print("##", k, self.dataset[k]['task-id'], self.dataset.task_list[self.dataset[k]['task-id']])    
 	ax = plt.gca()
 	ax.set_ylim([-0.3,0.3])
-	line_objects = plt.plot(self.dataset[k]['all-object-state'][:,indices], 'o')	
+	# line_objects = plt.plot(self.dataset[k]['all-object-state'][:,indices], 'o')
+	line_objects = plt.plot(self.dataset[k]['dummy_object_state'][:,indices], 'o')	
 	plt.legend(iter(line_objects), object_legend)
 	plt.grid()
 	plt.savefig("Traj_{0}.png".format(str(k).zfill(2)))
