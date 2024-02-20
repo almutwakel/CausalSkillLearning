@@ -147,7 +147,7 @@ def return_dataset(args, data=None, create_dataset_variation=False):
 	############################
 	elif args.data=='RealWorldRigidHumanPreproc':
 		dataset = RealWorldHumanRigid_DataLoader.RealWorldHumanRigid_PreDataset(args)
-	elif args.data in ['RealWorldRigidHuman', 'RealWorldRigidHumanNNTransfer',
+	elif args.data in ['RealWorldRigidHuman', 'RealWorldRigidHumanNNTransfer', \
 					 'RealWorldRigidHumanNNTranferCompositional','RealWorldRigidHumanNNTranferFull']:
 		dataset = RealWorldHumanRigid_DataLoader.RealWorldHumanRigid_Dataset(args)
 
