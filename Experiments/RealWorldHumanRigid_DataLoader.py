@@ -1026,11 +1026,11 @@ class RealWorldHumanRigid_Dataset(Dataset):
 		if self.args.data in ['RealWorldRigidHumanNNTransferFull']:
 			self.task_list = ['Pouring', 'BoxOpening', 'DrawerOpening', 'Pouring+Stirring', 'DrawerOpening+PickPlace', 'BoxOpening+Pouring', 'PickPlace', 'Stirring']		
 			self.environment_names = ['Pouring', 'BoxOpening', 'DrawerOpening', 'Pouring+Stirring', 'DrawerOpening+PickPlace', 'BoxOpening+Pouring', 'PickPlace', 'Stirring']
-			self.num_demos = np.array([5, 6, 6, 6, 6, 6, 10, 10])		
+			self.num_demos = np.array([5, 6, 6, 6, 6, 6, 10, 10])
 		elif self.args.data in ['RealWorldRigidHumanNNTransferCompositional']:
 			self.task_list = ['Pouring+Stirring', 'DrawerOpening+PickPlace', 'BoxOpening+Pouring']
 			self.environment_names = ['Pouring+Stirring', 'DrawerOpening+PickPlace', 'BoxOpening+Pouring']
-			self.num_demos = np.array([6, 6, 6])		
+			self.num_demos = np.array([6, 6, 6])
 		else:		
 			self.task_list = ['Pouring', 'BoxOpening', 'DrawerOpening', 'PickPlace', 'Stirring']
 			self.environment_names = [ 'Pouring', 'BoxOpening', 'DrawerOpening', 'PickPlace', 'Stirring']
@@ -1126,19 +1126,58 @@ class RealWorldHumanRigid_Dataset(Dataset):
 			# self.files.append(np.load("{0}/{1}/New_Task_Demo_Array_HDImages_NoTagFusion.npy".format(self.dataset_directory, self.task_list[i]), allow_pickle=True))
 			# self.files.append(np.load("{0}/{1}/New_Task_Demo_Array_HDImages_NewFreq_RenableTagFusion.npy".format(self.dataset_directory, self.task_list[i]), allow_pickle=True))			
 			self.files.append(np.load("{0}/{1}/New_Task_Demo_Array_HDImages_ReorderedObjects.npy".format(self.dataset_directory, self.task_list[i]), allow_pickle=True))
-			
-	def define_compositional_task_indices(self):
+		
+		self.define_compositional_task_split_indices()
+		self.define_compositional_task_object_indices()
 
-		self.compositional_task_list = ['Pouring+Stirring', 'DrawerOpening+PickPlace', 'BoxOpening+Pouring']
+	def define_compositional_task_split_indices(self):
+
+		# self.compositional_task_list = ['Pouring+Stirring', 'DrawerOpening+PickPlace', 'BoxOpening+Pouring']
 		self.compositional_task_split_indices = {}
 		self.compositional_task_split_indices['Pouring+Stirring'] = np.zeros(6)
 		self.compositional_task_split_indices['DrawerOpening+PickPlace'] = np.zeros(6)
 		self.compositional_task_split_indices['BoxOpening+Pouring'] = np.zeros(6)
 	
-		# Fill in values.
-		# self.compositional_task_split_indices['Pouring+Stirring'][0] = 
+		self.compositional_task_split_indices['Pouring+Stirring'][0] = 105
+		self.compositional_task_split_indices['Pouring+Stirring'][1] = 90
+		self.compositional_task_split_indices['Pouring+Stirring'][2] = 90
+		self.compositional_task_split_indices['Pouring+Stirring'][3] = 50
+		self.compositional_task_split_indices['Pouring+Stirring'][4] = 115
+		self.compositional_task_split_indices['Pouring+Stirring'][5] = 125
 
-	def reconstruct_object_state(self, data_element):
+		self.compositional_task_split_indices['DrawerOpening+PickPlace'][0] = 65
+		self.compositional_task_split_indices['DrawerOpening+PickPlace'][1] = 55
+		self.compositional_task_split_indices['DrawerOpening+PickPlace'][2] = 75
+		self.compositional_task_split_indices['DrawerOpening+PickPlace'][3] = 85
+		self.compositional_task_split_indices['DrawerOpening+PickPlace'][4] = 55
+		self.compositional_task_split_indices['DrawerOpening+PickPlace'][5] = 60
+
+		self.compositional_task_split_indices['BoxOpening+Pouring'][0] = 80
+		self.compositional_task_split_indices['BoxOpening+Pouring'][1] = 60
+		self.compositional_task_split_indices['BoxOpening+Pouring'][2] = 60
+		self.compositional_task_split_indices['BoxOpening+Pouring'][3] = 50
+		self.compositional_task_split_indices['BoxOpening+Pouring'][4] = 50
+		self.compositional_task_split_indices['BoxOpening+Pouring'][5] = 55
+
+	def get_split_index_for_demonstration(self, task, demo_index):
+
+		return self.compositional_task_split_indices[task][demo_index]
+
+	def define_compositional_task_object_indices(self):
+
+		self.compositional_task_object_indices = {}
+		self.compositional_task_object_indices['Pouring+Stirring'] = [np.concatenate([np.arange(0,7), np.arange(14,21)]), \
+																	np.arange(7,21)]			
+		self.compositional_task_object_indices['DrawerOpening+PickPlace'] =  [np.arange(0,14), \
+																	np.concatenate([np.arange(14,21), np.arange(7,14)])]
+		self.compositional_task_object_indices['BoxOpening+Pouring'] = [np.arange(7,21), \
+																  	np.concatenate([np.arange(0,7), np.arange(14,21)])]
+
+	# def get_object_indices_for_demosntration(self, task, demo_index):
+
+	# 	return self.compositional_task_object_indices[task][]
+
+	def reconstruct_object_state(self, data_element, demo_index, task_index):
 
 		# First backup demonstration. 	
 		data_element['old_demo'] = copy.deepcopy(data_element['demo'])
@@ -1146,10 +1185,20 @@ class RealWorldHumanRigid_Dataset(Dataset):
 		data_element['dummy_hand_state'] = np.concatenate([data_element['hand-state'][...,:3], data_element['hand-state'][...,-4:]], axis=-1)
 
 		# Now depending on the data, create appropriate artificial object state. 
-		# if self.args.data in ['RealWorldRigidHumanNNTransfer']:				
-		data_element['dummy_object_state'] = data_element['object-state'][...,:14]		
-		# elif self.args.data in ['RealWorldRigidHumanNNTransferCompositional']:
-		# 	pass
+		if self.args.data in ['RealWorldRigidHumanNNTransfer']:				
+			data_element['dummy_object_state'] = data_element['object-state'][...,:14]
+		elif self.args.data in ['RealWorldRigidHumanNNTransferCompositional']:
+			
+			# Get the temporal index that we switch which objects we use at. 
+			split_index = self.get_split_index_for_demonstration(self.task_list[task_index], demo_index=demo_index)
+
+			# Get object dimension indices to use. 
+			pre_split_indices = self.compositional_task_object_indices[self.task_list[task_index]][0]
+			post_split_indices = self.compositional_task_object_indices[self.task_list[task_index]][1]
+
+			# First copy the entire pre-split indexed objects into the dummy object state object, then fill in post split indices. 
+			data_element['dummy_object_state'] = data_element['object-state'][...,pre_split_indices]
+			data_element['dummy_object_state'][split_index:] = data_element['object-state'][...,post_split_indices]
 		
 		# Now reconstruct demo. 
 		data_element['demo'] = np.concatenate([data_element['dummy_hand_state'], data_element['dummy_object_state']], axis=-1)
@@ -1167,7 +1216,7 @@ class RealWorldHumanRigid_Dataset(Dataset):
 		
 		# Decide task ID, and new index modulo num_demos.
 		# Subtract number of demonstrations in cumsum until then, and then 				
-		new_index = index-self.cummulative_num_demos[max(task_index,0)]		
+		new_index = index-self.cummulative_num_demos[max(task_index,0)]
 		data_element = self.files[task_index][new_index]
 
 		self.kernel_bandwidth = self.args.smoothing_kernel_bandwidth

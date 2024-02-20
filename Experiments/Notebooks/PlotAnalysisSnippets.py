@@ -1,17 +1,23 @@
-cd /scratch/cchawla/TrainingLogs/HumanDatasetAnalysis_SwappedObjects
+for k in range(len(self.dataset)):
+    isz = (self.dataset[k]['all-object-state'][...,21:]==0).all()
+    print(k, isz)
 
-indices = np.concatenate([np.arange(7,10), np.arange(0,3)])
-# indices = np.concatenate([np.arange(14,17), np.arange(0,3)])
-# indices = np.arange(7,10)
+cd /scratch/cchawla/TrainingLogs/
+mkdir HumanCompDatasetAnalysis/
+cd HumanCompDatasetAnalysis/
+
+indices = np.concatenate([np.arange(0,3), np.arange(7,10), np.arange(14,17)])
+object_legend = ['o1x', 'o1y', 'o1z', 'o2x', 'o2y', 'o2z', 'o3x', 'o3y', 'o3z']
 
 for k in range(len(self.dataset)):
-	print("##", k)    
+	print("##", k, self.dataset[k]['task-id'], self.dataset.task_list[self.dataset[k]['task-id']])    
 	ax = plt.gca()
-	ax.set_ylim([-1,1])
-	plt.plot(self.dataset[k]['demo'][:,indices], 'o')
-	# plt.plot(self.dataset[k]['demo'][:,7:10])
-	
+	ax.set_ylim([-0.3,0.3])
+	line_objects = plt.plot(self.dataset[k]['all-object-state'][:,indices], 'o')	
+	plt.legend(iter(line_objects), object_legend)
+	plt.grid()
 	plt.savefig("Traj_{0}.png".format(str(k).zfill(2)))
+	
 	plt.close()
 
 # Open Results HTML file. 	    
