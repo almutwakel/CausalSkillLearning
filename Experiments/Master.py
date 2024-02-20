@@ -437,7 +437,8 @@ def parse_arguments():
 	parser.add_argument('--kl_cyclic_phase_epochs',dest='kl_cyclic_phase_epochs',type=int,default=100,help='Number of epochs to cycle KL weight over.')	
 
 	# architecture	
-	parser.add_argument('--transformer_encoder',dest='transformer_encoder',type=int,default=0,help='Whether or not to use a transformer encoder instead of an LSTM.')	
+	# parser.add_argument('--transformer_encoder',dest='transformer_encoder',type=int,default=0,help='Whether or not to use a transformer encoder instead of an LSTM.')	
+	parser.add_argument('--transformer',dest='transformer',type=str,default=None,choices=[None, 'encoder', 'full'],help='Whether or not to use a transformer encoder instead of an LSTM.')	
 	parser.add_argument('--split_stream_encoder',dest='split_stream_encoder',type=int,default=0,help='Whether to use split stream encoder or not.')
 	parser.add_argument('--embedding_visualization_stream',dest='embedding_visualization_stream',type=str,default=None,help='Which stream to use to embed and visualize Z space.')
 	parser.add_argument('--robot_state_size',dest='robot_state_size',type=int,default=8,help='Default robot state size.')
