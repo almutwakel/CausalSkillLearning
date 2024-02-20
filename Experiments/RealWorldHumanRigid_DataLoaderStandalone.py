@@ -1137,8 +1137,6 @@ class RealWorldHumanRigid_Dataset(RealWorldHumanRigid_PreDataset):
 			data_element['is_valid'] = False			
 		else:
 			data_element['is_valid'] = True
-
-
 			
 			if self.args.smoothen:
 				data_element['demo'] = gaussian_filter1d(data_element['demo'],self.kernel_bandwidth,axis=0,mode='nearest')

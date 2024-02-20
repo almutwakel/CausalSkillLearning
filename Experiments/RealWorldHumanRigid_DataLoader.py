@@ -1188,7 +1188,10 @@ class RealWorldHumanRigid_Dataset(Dataset):
 		if self.args.data in ['RealWorldRigidHumanNNTransfer']:				
 			data_element['dummy_object_state'] = data_element['object-state'][...,:14]
 		elif self.args.data in ['RealWorldRigidHumanNNTransferCompositional']:
-			
+
+			print("Embed in reconstruct object state")						
+			embed()
+
 			# Get the temporal index that we switch which objects we use at. 
 			split_index = self.get_split_index_for_demonstration(self.task_list[task_index], demo_index=demo_index)
 
@@ -1252,7 +1255,7 @@ class RealWorldHumanRigid_Dataset(Dataset):
 			if self.args.data in ['RealWorldRigidHumanNNTransfer', 'RealWorldRigidHumanNNTransferFull',
 						 'RealWorldRigidHumanNNTransferCompositional']:
 				
-				data_element = self.reconstruct_object_state(data_element)
+				data_element = self.reconstruct_object_state(data_element, demo_index=new_index, task_index=task_index)
 
 		return data_element
 	
