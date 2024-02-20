@@ -1016,14 +1016,25 @@ class RealWorldHumanRigid_PreDataset(Dataset):
 
 # class RealWorldHumanRigid_Dataset(RealWorldHumanRigid_PreDataset):
 class RealWorldHumanRigid_Dataset(Dataset):	
+
 	def __init__(self, args):
 		
 		# super(RealWorldHumanRigid_Dataset, self).__init__(args)	
 
 		self.args = args
-		self.task_list = [ 'Pouring', 'BoxOpening', 'DrawerOpening', 'PickPlace', 'Stirring']
-		self.environment_names = [ 'Pouring', 'BoxOpening', 'DrawerOpening', 'PickPlace', 'Stirring']
-		self.num_demos = np.array([5, 6, 6, 10, 10])		
+
+		if self.args.data in ['RealWorldRigidHumanNNTransferFull']:
+			self.task_list = ['Pouring', 'BoxOpening', 'DrawerOpening', 'Pouring+Stirring', 'DrawerOpening+PickPlace', 'BoxOpening+Pouring', 'PickPlace', 'Stirring']		
+			self.environment_names = ['Pouring', 'BoxOpening', 'DrawerOpening', 'Pouring+Stirring', 'DrawerOpening+PickPlace', 'BoxOpening+Pouring', 'PickPlace', 'Stirring']
+			self.num_demos = np.array([5, 6, 6, 6, 6, 6, 10, 10])		
+		elif self.args.data in ['RealWorldRigidHumanNNTransferCompositional']:
+			self.task_list = ['Pouring+Stirring', 'DrawerOpening+PickPlace', 'BoxOpening+Pouring']
+			self.environment_names = ['Pouring+Stirring', 'DrawerOpening+PickPlace', 'BoxOpening+Pouring']
+			self.num_demos = np.array([6, 6, 6])		
+		else:		
+			self.task_list = ['Pouring', 'BoxOpening', 'DrawerOpening', 'PickPlace', 'Stirring']
+			self.environment_names = [ 'Pouring', 'BoxOpening', 'DrawerOpening', 'PickPlace', 'Stirring']
+			self.num_demos = np.array([5, 6, 6, 10, 10])
 
 		# Each task has different number of demos according to our Human Dataset.
 		self.number_tasks = len(self.task_list)
@@ -1116,7 +1127,35 @@ class RealWorldHumanRigid_Dataset(Dataset):
 			# self.files.append(np.load("{0}/{1}/New_Task_Demo_Array_HDImages_NewFreq_RenableTagFusion.npy".format(self.dataset_directory, self.task_list[i]), allow_pickle=True))			
 			self.files.append(np.load("{0}/{1}/New_Task_Demo_Array_HDImages_ReorderedObjects.npy".format(self.dataset_directory, self.task_list[i]), allow_pickle=True))
 			
+	def define_compositional_task_indices(self):
 
+		self.compositional_task_list = ['Pouring+Stirring', 'DrawerOpening+PickPlace', 'BoxOpening+Pouring']
+		self.compositional_task_split_indices = {}
+		self.compositional_task_split_indices['Pouring+Stirring'] = np.zeros(6)
+		self.compositional_task_split_indices['DrawerOpening+PickPlace'] = np.zeros(6)
+		self.compositional_task_split_indices['BoxOpening+Pouring'] = np.zeros(6)
+	
+		# Fill in values.
+		# self.compositional_task_split_indices['Pouring+Stirring'][0] = 
+
+	def reconstruct_object_state(self, data_element):
+
+		# First backup demonstration. 	
+		data_element['old_demo'] = copy.deepcopy(data_element['demo'])
+		# Now create dummy hand state. 
+		data_element['dummy_hand_state'] = np.concatenate([data_element['hand-state'][...,:3], data_element['hand-state'][...,-4:]], axis=-1)
+
+		# Now depending on the data, create appropriate artificial object state. 
+		# if self.args.data in ['RealWorldRigidHumanNNTransfer']:				
+		data_element['dummy_object_state'] = data_element['object-state'][...,:14]		
+		# elif self.args.data in ['RealWorldRigidHumanNNTransferCompositional']:
+		# 	pass
+		
+		# Now reconstruct demo. 
+		data_element['demo'] = np.concatenate([data_element['dummy_hand_state'], data_element['dummy_object_state']], axis=-1)
+
+		return data_element
+	
 	def __getitem__(self, index):
 
 		if index>=self.total_length:
@@ -1161,23 +1200,10 @@ class RealWorldHumanRigid_Dataset(Dataset):
 				data_element['demo'] = data_element['hand-state']
 			# data_element['environment-name'] = self.environment_names[task_index]
 				
-			if self.args.data in ['RealWorldRigidHumanNNTransfer']:
-				data_element['old_demo'] = copy.deepcopy(data_element['demo'])
-
-				# print("Embed in demo construction")
-				# embed()
-				#######################
-				# First construct dummy hand state.				
-				data_element['dummy_hand_state'] = np.concatenate([data_element['hand-state'][...,:3], data_element['hand-state'][...,-4:]], axis=-1)
-
-				# if data_element['task-id'] == 0:
-				# 	print("TEMPORARILY SWAPPING POURING OBJECTS IN THIS DATALOADER")
-				# 	# OBJECTS ARE SWAPPED FOR POURING.
-				# 	swapped_object_state_indices = np.concatenate([np.arange(7,14), np.arange(0,7), np.arange(14,28)])
-				# 	data_element['object-state'] = data_element['object-state'][...,swapped_object_state_indices]
-
-				data_element['dummy_object_state'] = data_element['object-state'][...,:14]		
-				data_element['demo'] = np.concatenate([data_element['dummy_hand_state'], data_element['dummy_object_state']], axis=-1)
+			if self.args.data in ['RealWorldRigidHumanNNTransfer', 'RealWorldRigidHumanNNTransferFull',
+						 'RealWorldRigidHumanNNTransferCompositional']:
+				
+				data_element = self.reconstruct_object_state(data_element)
 
 		return data_element
 	

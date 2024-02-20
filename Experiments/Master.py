@@ -164,7 +164,7 @@ class Master():
 		print("##########################")
 		print("Finished Dataset Creation.")		
 		print("##########################")
-		# embed()		
+		embed()		
 
 		# Now define policy manager.
 		if self.args.setting in ['learntsub', 'joint']:
