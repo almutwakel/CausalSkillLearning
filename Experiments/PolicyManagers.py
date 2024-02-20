@@ -38,7 +38,7 @@ global_dataset_list = ['MIME','OldMIME','Roboturk','OrigRoboturk','FullRoboturk'
 			'MOMARTPreproc', 'MOMART', 'MOMARTObject', 'MOMARTRobotObject', 'MOMARTRobotObjectFlat', \
 			'FrankaKitchenPreproc', 'FrankaKitchen', 'FrankaKitchenObject', 'FrankaKitchenRobotObject', \
 			'RealWorldRigid', 'RealWorldRigidRobot', 'RealWorldRigidJEEF', 'RealWorldRigidJEEFAbsRelObj', \
-			'RealWorldRigidHuman', \
+			'RealWorldRigidHuman', 'RealWorldRigidHumanNNTransfer', \
 			'NDAX', 'NDAXMotorAngles', 'NDAXv2']
 
 class PolicyManager_BaseClass():
@@ -136,7 +136,7 @@ class PolicyManager_BaseClass():
 				self.visualizer = FetchMOMARTVisualizer(args=self.args)
 		elif self.args.data in ['RealWorldRigid', 'NDAX', 'NDAXMotorAngles', 'NDAXv2', \
 						  'RealWorldRigidRobot', 'RealWorldRigidJEEF', 'RealWorldRigidJEEFAbsRelObj',\
-							'RealWorldRigidHuman']:
+							'RealWorldRigidHuman', 'RealWorldRigidHumanNNTransfer']:
 			self.visualizer = DatasetImageVisualizer(args=self.args)
 		else:
 			self.visualizer = ToyDataVisualizer()
@@ -477,7 +477,7 @@ class PolicyManager_BaseClass():
 		# elif self.args.data in ['RealWorldRigid', 'NDAX', 'NDAXMotorAngles', 'NDAXv2']:
 		elif self.args.data in ['RealWorldRigid', 'NDAX', 'NDAXMotorAngles', 'NDAXv2', \
 						  'RealWorldRigidRobot', 'RealWorldRigidJEEF', 'RealWorldRigidJEEFAbsRelObj',\
-							'RealWorldRigidHuman']:
+							'RealWorldRigidHuman', 'RealWorldRigidHumanNNTransfer']:
 			self.visualizer = DatasetImageVisualizer(args=self.args)
 		else: 
 			self.visualizer = ToyDataVisualizer()
@@ -627,7 +627,7 @@ class PolicyManager_BaseClass():
 
 					#######################
 					# Create env for batch.
-					if not(self.args.data in ['RealWorldRigid', 'RealWorldRigidHuman', 'NDAX', 'NDAXMotorAngles','NDAXv2']):
+					if not(self.args.data in ['RealWorldRigid', 'RealWorldRigidHuman', 'RealWorldRigidHumanNNTransfer', 'NDAX', 'NDAXMotorAngles','NDAXv2']):
 						self.per_batch_env_management(data_element[0])
 
 					for b in range(self.args.batch_size):
@@ -769,7 +769,7 @@ class PolicyManager_BaseClass():
 		self.write_results_HTML(plots_or_gif='Plot')
 		
 		viz_embeddings = True
-		if (self.args.data in ['RealWorldRigid', 'RealWorldRigidRobot', 'RealWorldRigidHuman','NDAXv2']) and (self.args.images_in_real_world_dataset==0):
+		if (self.args.data in ['RealWorldRigid', 'RealWorldRigidRobot', 'RealWorldRigidHuman','RealWorldRigidHumanNNTransfer','NDAXv2']) and (self.args.images_in_real_world_dataset==0):
 			viz_embeddings = False
 
 		if viz_embeddings:
@@ -1153,7 +1153,7 @@ class PolicyManager_BaseClass():
 		# For now
 		##############################
 
-		if self.args.data in ['RealWorldRigid', 'NDAXv2', 'RealWorldRigidHuman'] and self.args.images_in_real_world_dataset:
+		if self.args.data in ['RealWorldRigid', 'NDAXv2', 'RealWorldRigidHuman', 'RealWorldRigidHumanNNTransfer'] and self.args.images_in_real_world_dataset:
 			# This should already be segmented to the right start and end point...		
 			self.ground_truth_gif = self.visualizer.visualize_prerendered_gif(indexed_data_element['subsampled_images'], gif_path=self.dir_name, gif_name="Traj_{0}_GIF_GT.gif".format(str(i).zfill(3)))
 		else:			
@@ -1362,7 +1362,11 @@ class PolicyManager_BaseClass():
 		# zoom_factor = 0.5
 
 		# Visualizing more of the images by making them smaller..
-		zoom_factor = 0.3
+		# zoom_factor = 0.3
+
+		# less spaced out..
+		matplotlib.rcParams['figure.figsize'] = [20, 20]			
+		zoom_factor = 0.2
 
 		# Set this parameter to make sure we don't drop frames.
 		matplotlib.rcParams['animation.embed_limit'] = 2**128
@@ -2233,15 +2237,11 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			self.conditional_info_size = 0
 			self.test_set_size = 50
 
-			# stat_dir_name = "RoboturkRobotObjects"			
-			# stat_dir_name = self.args.data
+			# # stat_dir_name = "RoboturkRobotObjects"			
+			# stat_dir_name = self.dataset.stat_dir_name
 
-			# if self.args.normalization=='meanvar':
-			# 	self.norm_sub_value = np.load("Statistics/{0}/{0}_Mean.npy".format(stat_dir_name))
-			# 	self.norm_denom_value = np.load("Statistics/{0}/{0}_Var.npy".format(stat_dir_name))
-			# elif self.args.normalization=='minmax':
-			# 	self.norm_sub_value = np.load("Statistics/{0}/{0}_Min.npy".format(stat_dir_name))
-			# 	self.norm_denom_value = np.load("Statistics/{0}/{0}_Max.npy".format(stat_dir_name)) - self.norm_sub_value
+			self.norm_sub_value[-4:] = 0.
+			self.norm_denom_value[-4:] = 1.
 
 		elif self.args.data in ['RoboturkRobotMultiObjects', 'RoboMimiRobotMultiObjects']:
 
@@ -2438,6 +2438,27 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			self.norm_denom_value[-14:] = 1.
 			self.norm_sub_value[-14:] = 0.
 
+		elif self.args.data in ['RealWorldRigidHumanNNTransfer']:
+
+			self.state_size = 21
+			self.state_dim = 21
+
+			# We deleted 18 dims from hand state
+			norm_indices = np.concatenate([ np.arange(0,3), np.arange(21,25), np.arange(25, 39)])
+			self.norm_sub_value = self.norm_sub_value[norm_indices]
+			self.norm_denom_value = self.norm_denom_value[norm_indices]
+
+			# Hand orientation. 
+			self.norm_denom_value[21-18:25-18] = 1.
+			self.norm_sub_value[21-18:25-18] = 0. 
+
+			# Object 1 Orientation:
+			self.norm_denom_value[28-18:32-18] = 1.
+			self.norm_sub_value[28-18:32-18] = 0. 
+
+			# Object 2 Orientation. 
+			self.norm_denom_value[35-18:39-18] = 1.
+			self.norm_sub_value[35-18:39-18] = 0. 
 
 		self.input_size = 2*self.state_size
 		self.hidden_size = self.args.hidden_size
@@ -2445,7 +2466,6 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		self.traj_length = self.args.traj_length			
 		self.conditional_info_size = 0
 		self.test_set_size = 0			
-
 
 		# Training parameters. 		
 		self.baseline_value = 0.
@@ -3053,6 +3073,10 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		self.unweighted_task_based_aux_loss = 0.
 		self.task_based_aux_loss = 0.
 
+		self.absolute_state_reconstruction_loss = 0. 
+		self.cummulative_computed_state_reconstruction_loss = 0. 
+		self.teacher_forced_state_reconstruction_loss = 0. 
+		
 		# 
 		self.unweighted_teacher_forced_state_reconstruction_loss = 0.
 		self.teacher_forced_state_reconstruction_loss = 0.
@@ -3198,11 +3222,32 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		negative_triangularized_mask = torch.triu(negative_full_mask, diagonal=1)
 
 		##############################
+		# 3) Partition Z Sets.
+		##############################
+
+		z_robot_set = update_dict['latent_z'][0,:,:int(self.latent_z_dimensionality/2)]
+		z_env_set = update_dict['latent_z'][0,:,int(self.latent_z_dimensionality/2):]
+
+
+		##############################
 		# 4) Compute Positive and Negative loss components. 
 		##############################
 
-		unmasked_task_based_aux_loss_positive_component = torch.clamp(self.pairwise_z_distances_dict['z_joint_distances'], min=self.args.positive_z_distance_margin)
-		unmasked_task_based_aux_loss_negative_component = torch.clamp(self.args.negative_z_distance_margin - self.pairwise_z_distances_dict['z_joint_distances'], min=0.)
+		if self.args.metric_distance_space=='z_R':
+			z_distances = self.pairwise_z_distances_dict['z_robot_distances']
+		elif self.args.metric_distance_space=='z_J':
+			z_distances = self.pairwise_z_distances_dict['z_joint_distances']
+		elif self.args.metric_distance_space=='z_E':
+			z_distances = self.pairwise_z_distances_dict['z_env_distances']
+		elif self.args.metric_distance_space=='rel_zR_zE':
+			# For each element in batch, compute relative vector between zR and zE. 
+			relative_zR_zE_vector = z_robot_set - z_env_set
+			
+			# Now compute distances of this across the batch. 
+			z_distances = torch.cdist(relative_zR_zE_vector, relative_zR_zE_vector)
+
+		unmasked_task_based_aux_loss_positive_component = torch.clamp(z_distances, min=self.args.positive_z_distance_margin)
+		unmasked_task_based_aux_loss_negative_component = torch.clamp(self.args.negative_z_distance_margin - z_distances, min=0.)
 
 		self.masked_task_based_aux_loss_positive_component = (positive_triangularized_mask*unmasked_task_based_aux_loss_positive_component).mean()
 		self.masked_task_based_aux_loss_negative_component = (negative_triangularized_mask*unmasked_task_based_aux_loss_negative_component).mean()
@@ -3390,12 +3435,15 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			z_distances = self.pairwise_z_distances_dict['z_robot_distances']
 		elif self.args.metric_distance_space=='z_J':
 			z_distances = self.pairwise_z_distances_dict['z_joint_distances']
+		elif self.args.metric_distance_space=='z_E':
+			z_distances = self.pairwise_z_distances_dict['z_env_distances']
 		elif self.args.metric_distance_space=='rel_zR_zE':
 			# For each element in batch, compute relative vector between zR and zE. 
 			relative_zR_zE_vector = z_robot_set - z_env_set
 			
 			# Now compute distances of this across the batch. 
 			z_distances = torch.cdist(relative_zR_zE_vector, relative_zR_zE_vector)
+		
 					
 		##############################
 		# 3) Compute Masks. 
@@ -4401,7 +4449,7 @@ class PolicyManager_BatchPretrain(PolicyManager_Pretrain):
 						else:
 							batch_trajectory[x] = data_element['demo'][start_timepoint:end_timepoint,:-1]
 
-					if self.args.data in ['RealWorldRigid', 'RealWorldRigidJEEF', 'RealWorldRigidJEEFAbsRelObj', 'NDAXv2', 'RealWorldRigidHuman'] and self.args.images_in_real_world_dataset:
+					if self.args.data in ['RealWorldRigid', 'RealWorldRigidJEEF', 'RealWorldRigidJEEFAbsRelObj', 'NDAXv2', 'RealWorldRigidHuman', 'RealWorldRigidHumanNNTransfer'] and self.args.images_in_real_world_dataset:
 
 						# Truncate the images to start and end timepoint. 
 						data_element[x]['subsampled_images'] = data_element[x]['images'][start_timepoint:end_timepoint]

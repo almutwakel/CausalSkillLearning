@@ -40,7 +40,7 @@ class OrigRobomimic_Dataset(Dataset):
 		self.num_demos = 200*np.ones((4),dtype=int)
 		self.cummulative_num_demos = self.num_demos.cumsum()
 		self.cummulative_num_demos = np.insert(self.cummulative_num_demos,0,0)
-		
+		self.state_size = 8
 		self.bad_original_index_list = []
 		# Append -1 to the start of cummulative_num_demos. This has two purposes. 
 		# The first is that when we are at index 0 of the dataset, if we appended 0, np.searchsorted returns 0, rather than 1. 
@@ -425,7 +425,6 @@ class Robomimic_Dataset(OrigRobomimic_Dataset):
 
 			# By popping element from files / dataset_traj_lengths, we now don't need to change indexing.
 		
-
 	def setup(self):
 		self.files = []
 		for i in range(len(self.task_list)):
@@ -469,9 +468,9 @@ class Robomimic_Dataset(OrigRobomimic_Dataset):
 
 		return data_element
 	
-	def compute_statistics(self):
+	def compute_statistics(self, suffix=""):
 
-		self.state_size = 8
+		
 		self.total_length = self.__len__()
 		mean = np.zeros((self.state_size))
 		variance = np.zeros((self.state_size))
@@ -529,20 +528,21 @@ class Robomimic_Dataset(OrigRobomimic_Dataset):
 		vel_max_value = vel_maxs.max(axis=0)
 		vel_min_value = vel_mins.min(axis=0)
 
-		np.save("Robomimic_Mean.npy", mean)
-		np.save("Robomimic_Var.npy", variance)
-		np.save("Robomimic_Min.npy", min_value)
-		np.save("Robomimic_Max.npy", max_value)
-		np.save("Robomimic_Vel_Mean.npy", vel_mean)
-		np.save("Robomimic_Vel_Var.npy", vel_variance)
-		np.save("Robomimic_Vel_Min.npy", vel_min_value)
-		np.save("Robomimic_Vel_Max.npy", vel_max_value)
+		np.save("Robomimic{0}_Mean.npy".format(suffix), mean)
+		np.save("Robomimic{0}_Var.npy".format(suffix), variance)
+		np.save("Robomimic{0}_Min.npy".format(suffix), min_value)
+		np.save("Robomimic{0}_Max.npy".format(suffix), max_value)
+		np.save("Robomimic{0}_Vel_Mean.npy".format(suffix), vel_mean)
+		np.save("Robomimic{0}_Vel_Var.npy".format(suffix), vel_variance)
+		np.save("Robomimic{0}_Vel_Min.npy".format(suffix), vel_min_value)
+		np.save("Robomimic{0}_Vel_Max.npy".format(suffix), vel_max_value)
 
 class Robomimic_ObjectDataset(Robomimic_Dataset):
 
 	def __init__(self, args):
 
 		super(Robomimic_ObjectDataset, self).__init__(args)
+		self.state_size = 7
 
 	def super_getitem(self, index):
 
@@ -579,6 +579,8 @@ class Robomimic_RobotObjectDataset(Robomimic_Dataset):
 	def __init__(self, args):
 
 		super(Robomimic_RobotObjectDataset, self).__init__(args)
+		self.state_size = 15 
+		self.stat_dir_name = 'RobomimicRobotObject'
 
 	def super_getitem(self, index):
 
