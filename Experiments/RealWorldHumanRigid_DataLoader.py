@@ -1189,19 +1189,17 @@ class RealWorldHumanRigid_Dataset(Dataset):
 			data_element['dummy_object_state'] = data_element['object-state'][...,:14]
 		elif self.args.data in ['RealWorldRigidHumanNNTransferCompositional']:
 
-			print("Embed in reconstruct object state")						
-			embed()
-
 			# Get the temporal index that we switch which objects we use at. 
-			split_index = self.get_split_index_for_demonstration(self.task_list[task_index], demo_index=demo_index)
+			split_index = int(self.get_split_index_for_demonstration(self.task_list[task_index], demo_index=demo_index))
 
 			# Get object dimension indices to use. 
 			pre_split_indices = self.compositional_task_object_indices[self.task_list[task_index]][0]
 			post_split_indices = self.compositional_task_object_indices[self.task_list[task_index]][1]
 
 			# First copy the entire pre-split indexed objects into the dummy object state object, then fill in post split indices. 
-			data_element['dummy_object_state'] = data_element['object-state'][...,pre_split_indices]
-			data_element['dummy_object_state'][split_index:] = data_element['object-state'][...,post_split_indices]
+			data_element['dummy_object_state'] = np.zeros((data_element['demo'].shape[0], 14))
+			data_element['dummy_object_state'][:split_index] = data_element['object-state'][:split_index,pre_split_indices]
+			data_element['dummy_object_state'][split_index:] = data_element['object-state'][split_index:,post_split_indices]
 		
 		# Now reconstruct demo. 
 		data_element['demo'] = np.concatenate([data_element['dummy_hand_state'], data_element['dummy_object_state']], axis=-1)
