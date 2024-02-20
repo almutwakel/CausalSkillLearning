@@ -2553,7 +2553,7 @@ class ContinuousEncoderNetwork(PolicyNetwork_BaseClass):
 
 		if self.args.transformer=='full':
 			
-			dummy_target = torch.zeros(1, batch_size, posembed_input.shape[-1])
+			dummy_target = torch.zeros(1, batch_size, posembed_input.shape[-1]).to(device)
 			outputs = network_dict['sequence_model'](posembed_input, dummy_target)
 
 			# Here, copy. 
