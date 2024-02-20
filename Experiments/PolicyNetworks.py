@@ -2498,7 +2498,7 @@ class ContinuousEncoderNetwork(PolicyNetwork_BaseClass):
 
 	def instantiate_networks(self):
 
-		self.network_dict = torch.nn.ModuleDict()
+		self.network_dict = torch.nn.ModuleDict()		
 		self.network_dict['sequence_model'], self.network_dict['mean_output_layer'], self.network_dict['variances_output_layer'], self.network_dict['state_representation_layer'] = self.define_networks(self.size_dict['input_size'], self.size_dict['output_size']) 
 
 		if self.args.positional_encoding:
