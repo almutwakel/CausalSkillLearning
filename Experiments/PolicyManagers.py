@@ -2825,11 +2825,14 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			# First get what compositional task this is. Then get the name of which individual task it is. 
 			individual_task_indices.append( self.dataset.individual_task_list.index(self.dataset.compositional_task_sets[self.task_id_set[k]][index]) )
 						
+		print("Embed in plot for composiitonal thingies. ")
+		embed()
+		
 		# Now for each compositional task, plot things with a particular marker. 
 		marker_list = ['o', '*', 's']
 		for k, v in enumerate(self.dataset.task_list):			
 			ax.scatter(embedded_zs[per_compositional_task_indices[v],0],embedded_zs[per_compositional_task_indices[v],1],c=colors[per_compositional_task_indices[v]],marker=marker_list[k],vmin=0,vmax=1,cmap='jet',edgecolors='black')
-			
+
 		# Title. 
 		ax.set_title("{0}".format(title),fontdict={'fontsize':15})
 		fig.canvas.draw()
