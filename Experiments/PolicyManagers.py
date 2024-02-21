@@ -2820,6 +2820,9 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		ax = fig.gca()				
 
 		for k in range(len(embedded_zs)):
+			
+			print("######################")
+			print(k, self.task_id_set[k])
 			# For all embedded z's, add index of this z to the appropriate composiitonal task index list.
 			per_compositional_task_indices[self.dataset.task_list[self.task_id_set[k]]].append(k)
 			
