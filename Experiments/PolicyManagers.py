@@ -2813,9 +2813,12 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		for k, v in enumerate(self.dataset.task_list):
 			per_compositional_task_indices[v] = []
 		
-		print("Embed in plot for composiitonal thingies. ")
-		embed()
+		# print("Embed in plot for composiitonal thingies. ")
+		# embed()
 				
+		fig = plt.figure()
+		ax = fig.gca()				
+
 		for k in range(len(embedded_zs)):
 			# For all embedded z's, add index of this z to the appropriate composiitonal task index list.
 			per_compositional_task_indices[self.dataset.task_list[self.task_id_set[k]]].append(k)
@@ -2825,14 +2828,15 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			# index = 1-int(self.segment_indices_set[k] <= (self.task_split_indices_set[k]-7))
 			index = int(self.segment_indices_set[k] > (self.task_split_indices_set[k]-7))
 
-			# First get what compositional task this is. Then get the name of which individual task it is. 
-			individual_task_indices.append( self.dataset.individual_task_list.index(self.dataset.compositional_task_sets[self.task_id_set[k]][index]) )
-						
+			# First get what compositional task this is. Then get the name of which individual task it is. 								
+			individual_task_indices.append( self.dataset.individual_task_list.index( self.dataset.compositional_task_sets[ self.dataset.task_list[self.task_id_set[k]] ][index] ) )						
 
 		# Now for each compositional task, plot things with a particular marker. 
 		marker_list = ['o', '*', 's']
 		for k, v in enumerate(self.dataset.task_list):			
-			ax.scatter(embedded_zs[per_compositional_task_indices[v],0],embedded_zs[per_compositional_task_indices[v],1],c=colors[per_compositional_task_indices[v]],marker=marker_list[k],vmin=0,vmax=1,cmap='jet',edgecolors='black')
+
+			ax.scatter(embedded_zs[np.array(per_compositional_task_indices[v]),0], embedded_zs[np.array(per_compositional_task_indices[v]),1], \
+			  c=np.array(individual_task_indices)[np.array(per_compositional_task_indices[v])],marker=marker_list[k],vmin=0,vmax=1,cmap='jet',edgecolors='black')
 
 		# Title. 
 		ax.set_title("{0}".format(title),fontdict={'fontsize':15})
@@ -2849,6 +2853,9 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		if self.args.data in ['RealWorldRigidHumanNNTransferCompositional']:
 			image = self.plot_embedding_for_H2RCompositionalTransfer(embedded_zs, title)
 		else: 
+
+			fig = plt.figure()
+			ax = fig.gca()
 			if shared:
 				colors = 0.2*np.ones((2*self.N))
 				colors[self.N:] = 0.92
