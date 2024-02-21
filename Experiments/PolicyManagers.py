@@ -2813,6 +2813,9 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		for k, v in enumerate(self.dataset.task_list):
 			per_compositional_task_indices[v] = []
 		
+		print("Embed in plot for composiitonal thingies. ")
+		embed()
+				
 		for k in range(len(embedded_zs)):
 			# For all embedded z's, add index of this z to the appropriate composiitonal task index list.
 			per_compositional_task_indices[self.dataset.task_list[self.task_id_set[k]]].append(k)
@@ -2825,9 +2828,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			# First get what compositional task this is. Then get the name of which individual task it is. 
 			individual_task_indices.append( self.dataset.individual_task_list.index(self.dataset.compositional_task_sets[self.task_id_set[k]][index]) )
 						
-		print("Embed in plot for composiitonal thingies. ")
-		embed()
-		
+
 		# Now for each compositional task, plot things with a particular marker. 
 		marker_list = ['o', '*', 's']
 		for k, v in enumerate(self.dataset.task_list):			
