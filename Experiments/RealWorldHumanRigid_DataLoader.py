@@ -1036,6 +1036,7 @@ class RealWorldHumanRigid_Dataset(Dataset):
 			self.environment_names = [ 'Pouring', 'BoxOpening', 'DrawerOpening', 'PickPlace', 'Stirring']
 			self.num_demos = np.array([5, 6, 6, 10, 10])
 
+		self.individual_task_list = ['Pouring', 'BoxOpening', 'DrawerOpening', 'PickPlace', 'Stirring']
 		# Each task has different number of demos according to our Human Dataset.
 		self.number_tasks = len(self.task_list)
 		self.cummulative_num_demos = self.num_demos.cumsum()
@@ -1129,6 +1130,7 @@ class RealWorldHumanRigid_Dataset(Dataset):
 		
 		self.define_compositional_task_split_indices()
 		self.define_compositional_task_object_indices()
+		self.define_compositional_task_IDs()
 
 	def define_compositional_task_split_indices(self):
 
@@ -1161,7 +1163,17 @@ class RealWorldHumanRigid_Dataset(Dataset):
 
 	def get_split_index_for_demonstration(self, task, demo_index):
 
-		return self.compositional_task_split_indices[task][demo_index]
+		if task in self.compositional_task_split_indices.keys():			
+			return self.compositional_task_split_indices[task][demo_index]
+		else: 
+			return None
+
+	def define_compositional_task_IDs(self):
+
+		self.compositional_task_sets = {}		
+		self.compositional_task_sets['Pouring+Stirring'] = ['Pouring', 'Stirring']
+		self.compositional_task_sets['DrawerOpening+PickPlace'] =  ['DrawerOpening', 'PickPlace']
+		self.compositional_task_sets['BoxOpening+Pouring'] = ['BoxOpening', 'Pouring']
 
 	def define_compositional_task_object_indices(self):
 
@@ -1223,8 +1235,9 @@ class RealWorldHumanRigid_Dataset(Dataset):
 		self.kernel_bandwidth = self.args.smoothing_kernel_bandwidth
 		
 		# Trivially adding task ID to data element.
-		data_element['task-id'] = task_index
+		data_element['task-id'] = task_index		
 		data_element['environment-name'] = self.environment_names[task_index]
+		
 
 		if data_element['hand-state'].shape[0]<=1:
 			data_element['is_valid'] = False			
@@ -1253,6 +1266,7 @@ class RealWorldHumanRigid_Dataset(Dataset):
 			if self.args.data in ['RealWorldRigidHumanNNTransfer', 'RealWorldRigidHumanNNTransferFull',
 						 'RealWorldRigidHumanNNTransferCompositional']:
 				
+				data_element['task_split_index'] = self.get_split_index_for_demonstration(self.task_list[data_element['task-id']], new_index)
 				data_element = self.reconstruct_object_state(data_element, demo_index=new_index, task_index=task_index)
 
 		return data_element

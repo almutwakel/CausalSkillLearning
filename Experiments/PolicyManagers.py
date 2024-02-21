@@ -2691,7 +2691,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 
 		return image
 
-	def update_plots(self, counter, loglikelihood, sample_traj, stat_dictionary):
+	def update_plots(self, counter, loglikelihood, sample_traj, stat_dictionary, input_dict=None):
 		
 		# log_dict['Subpolicy Loglikelihood'] = loglikelihood.mean()
 		log_dict = {'Subpolicy Loglikelihood': loglikelihood.mean(), 'Total Loss': self.total_loss.mean(), 'Encoder KL': self.encoder_KL.mean(), 'KL Weight': self.kl_weight}
@@ -2801,47 +2801,35 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 
 		wandb.log(log_dict, step=counter)
 
-	def plot_embedding(self, embedded_zs, title, shared=False, trajectory=False):
-	
-		fig = plt.figure()
-		ax = fig.gca()
+	def plot_embedding_for_H2RCompositionalTransfer(self, embedded_zs, title):
+
+		# For each compositional task, use a different marker. 
+		# For each constituent individual task, one of the original 5 colors for each task for the skill. 
 		
-		if shared:
-			colors = 0.2*np.ones((2*self.N))
-			colors[self.N:] = 0.92
-		else:
-			# colors = 0.2*np.ones((self.N))
+		# Create 3 lists for each compositional task, which stores indices of embedded_zs that are of that task.
+		per_compositional_task_indices = {}
+		individual_task_indices = []
 
-			# For now, plot colors using task ID. 
-			max_task = max(self.task_id_set)
-			colors = 0.1 + (0.75*(self.task_id_set/max_task))
-
-		if trajectory:
-			# Create a scatter plot of the embedding.
-
-			self.source_manager.get_trajectory_and_latent_sets()
-			self.target_manager.get_trajectory_and_latent_sets()
-
-			ratio = 0.4
-			color_scaling = 15
-
-			# Assemble shared trajectory set. 
-			traj_length = len(self.source_manager.trajectory_set[0,:,0])
-			self.shared_trajectory_set = np.zeros((2*self.N, traj_length, 2))
-			
-			self.shared_trajectory_set[:self.N] = self.source_manager.trajectory_set
-			self.shared_trajectory_set[self.N:] = self.target_manager.trajectory_set
-			
-			color_range_min = 0.2*color_scaling
-			color_range_max = 0.8*color_scaling+traj_length-1
-
-			for i in range(2*self.N):
-				ax.scatter(embedded_zs[i,0]+ratio*self.shared_trajectory_set[i,:,0],embedded_zs[i,1]+ratio*self.shared_trajectory_set[i,:,1],c=colors[i]*color_scaling+range(traj_length),cmap='jet',vmin=color_range_min,vmax=color_range_max,edgecolors='black')
-
-		else:
-			# Create a scatter plot of the embedding.
-			ax.scatter(embedded_zs[:,0],embedded_zs[:,1],c=colors,vmin=0,vmax=1,cmap='jet',edgecolors='black')
+		for k, v in enumerate(self.dataset.task_list):
+			per_compositional_task_indices[v] = []
 		
+		for k in range(len(embedded_zs)):
+			# For all embedded z's, add index of this z to the appropriate composiitonal task index list.
+			per_compositional_task_indices[self.dataset.task_list[self.task_id_set[k]]].append(k)
+			
+			# For all embedded z's, get which individual task this segment came from. 		
+			# The logic here is that if starting segment index < split index - 7, use the first index. Otherwise use the second index. 
+			# index = 1-int(self.segment_indices_set[k] <= (self.task_split_indices_set[k]-7))
+			index = int(self.segment_indices_set[k] > (self.task_split_indices_set[k]-7))
+
+			# First get what compositional task this is. Then get the name of which individual task it is. 
+			individual_task_indices.append( self.dataset.individual_task_list.index(self.dataset.compositional_task_sets[self.task_id_set[k]][index]) )
+						
+		# Now for each compositional task, plot things with a particular marker. 
+		marker_list = ['o', '*', 's']
+		for k, v in enumerate(self.dataset.task_list):			
+			ax.scatter(embedded_zs[per_compositional_task_indices[v],0],embedded_zs[per_compositional_task_indices[v],1],c=colors[per_compositional_task_indices[v]],marker=marker_list[k],vmin=0,vmax=1,cmap='jet',edgecolors='black')
+			
 		# Title. 
 		ax.set_title("{0}".format(title),fontdict={'fontsize':15})
 		fig.canvas.draw()
@@ -2849,6 +2837,57 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		width, height = fig.get_size_inches() * fig.get_dpi()
 		image = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8).reshape(int(height), int(width), 3)
 		image = np.transpose(image, axes=[2,0,1])
+
+		return image
+
+	def plot_embedding(self, embedded_zs, title, shared=False, trajectory=False):
+	
+		if self.args.data in ['RealWorldRigidHumanNNTransferCompositional']:
+			image = self.plot_embedding_for_H2RCompositionalTransfer(embedded_zs, title)
+		else: 
+			if shared:
+				colors = 0.2*np.ones((2*self.N))
+				colors[self.N:] = 0.92
+			else:
+				# colors = 0.2*np.ones((self.N))
+				# colors = self.get_embedding_coloring()
+
+				max_task = max(self.task_id_set)
+				colors = 0.1 + (0.75*(self.task_id_set/max_task))
+
+			if trajectory:
+				# Create a scatter plot of the embedding.
+
+				self.source_manager.get_trajectory_and_latent_sets()
+				self.target_manager.get_trajectory_and_latent_sets()
+
+				ratio = 0.4
+				color_scaling = 15
+
+				# Assemble shared trajectory set. 
+				traj_length = len(self.source_manager.trajectory_set[0,:,0])
+				self.shared_trajectory_set = np.zeros((2*self.N, traj_length, 2))
+				
+				self.shared_trajectory_set[:self.N] = self.source_manager.trajectory_set
+				self.shared_trajectory_set[self.N:] = self.target_manager.trajectory_set
+				
+				color_range_min = 0.2*color_scaling
+				color_range_max = 0.8*color_scaling+traj_length-1
+
+				for i in range(2*self.N):
+					ax.scatter(embedded_zs[i,0]+ratio*self.shared_trajectory_set[i,:,0],embedded_zs[i,1]+ratio*self.shared_trajectory_set[i,:,1],c=colors[i]*color_scaling+range(traj_length),cmap='jet',vmin=color_range_min,vmax=color_range_max,edgecolors='black')
+
+			else:
+				# Create a scatter plot of the embedding.
+				ax.scatter(embedded_zs[:,0],embedded_zs[:,1],c=colors,vmin=0,vmax=1,cmap='jet',edgecolors='black')
+			
+			# Title. 
+			ax.set_title("{0}".format(title),fontdict={'fontsize':15})
+			fig.canvas.draw()
+			# Grab image.
+			width, height = fig.get_size_inches() * fig.get_dpi()
+			image = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8).reshape(int(height), int(width), 3)
+			image = np.transpose(image, axes=[2,0,1])
 
 		return image
 
@@ -3737,7 +3776,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 				stats['i'] = i
 				stats['epoch'] = self.current_epoch_running
 				stats['batch_size'] = self.args.batch_size			
-				self.update_plots(counter, loglikelihood, state_action_trajectory, stats)
+				self.update_plots(counter, loglikelihood, state_action_trajectory, stats, input_dict=input_dict)
 
 				####################################
 				# (5) Return.
@@ -3907,6 +3946,8 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		self.gt_trajectory_set = []
 		# Save TASK IDs 
 		self.task_id_set = []
+		self.segment_indices_set = []
+		self.task_split_indices_set = []
 
 		# Use the dataset to get reasonable trajectories (because without the information bottleneck / KL between N(0,1), cannot just randomly sample.)
 
@@ -3939,9 +3980,12 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 
 				self.latent_z_set[i*self.args.batch_size+b] = copy.deepcopy(latent_z[0,b].detach().cpu().numpy())
 				# self.latent_z_set[i+b] = copy.deepcopy(latent_z[0,b].detach().cpu().numpy())
-				self.gt_trajectory_set.append(copy.deepcopy(sample_trajs[:,b]))
-				
-				self.task_id_set.append(data_element[b]['task-id'])
+				self.gt_trajectory_set.append(copy.deepcopy(sample_trajs[:,b]))				
+				self.task_id_set.append(data_element[b]['task-id'])		
+
+				if self.args.data in ['RealWorldRigidHumanNNTransferCompositional']:
+					self.segment_indices_set.append(self.batch_segment_indices[b])
+					self.task_split_indices_set.append(data_element[b]['task_split_index'])
 
 				if get_visuals:
 					# (2) Now rollout policy.	
