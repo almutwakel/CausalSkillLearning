@@ -2841,8 +2841,22 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			individual_task_indices_array = np.array(individual_task_indices)[np.array(per_compositional_task_indices[v])]
 			colors = 0.1 + (0.75*(individual_task_indices_array/max_task))
 
-			ax.scatter(embedded_zs[np.array(per_compositional_task_indices[v]),0], embedded_zs[np.array(per_compositional_task_indices[v]),1], \
-			  c=colors,marker=marker_list[k],vmin=0,vmax=1,cmap='jet',edgecolors='black')
+			xs = embedded_zs[np.array(per_compositional_task_indices[v]),0]
+			ys = embedded_zs[np.array(per_compositional_task_indices[v]),1]
+
+			# ##############################
+			# # PLOT OPTION 1 - markers 
+			# ##############################		
+			# ax.scatter(xs, ys, c=colors, marker=marker_list[k], vmin=0, vmax=1, cmap='jet', edgecolors='black')			
+			
+			##############################
+			# # PLOT OPTION 2 - no markers, just bigger plots and colors
+			##############################
+
+			# First plot with task colors.
+			ax.scatter(xs, ys, c=colors, vmin=0, vmax=1, cmap='jet', edgecolors='black')
+			# Next plot again with compositional task colors. 
+			ax.scatter(xs, ys, c=k, vmin=0, vmax=1, s=50, cmap='jet', edgecolors='black')
 
 		# Title. 
 		ax.set_title("{0}".format(title),fontdict={'fontsize':15})
