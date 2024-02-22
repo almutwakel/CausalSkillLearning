@@ -2467,14 +2467,14 @@ class ContinuousEncoderNetwork(PolicyNetwork_BaseClass):
 		
 		if self.args.transformer is not None:
 
-			with torch.backends.cuda.sdp_kernel(enable_flash=False, enable_math=False, enable_mem_efficient=False):
-				if self.args.transformer=='encoder':			
-					self.transformer_encoder_layer = torch.nn.TransformerEncoderLayer(d_model=output_size, nhead=4, dropout=self.args.dropout, dim_feedforward=self.hidden_size).to(device)
-					self.transformer_encoder = torch.nn.TransformerEncoder(encoder_layer=self.transformer_encoder_layer, num_layers=6).to(device)
-					sequence_model = self.transformer_encoder
-				elif self.args.transformer=='full':
-					self.transformer = torch.nn.Transformer(d_model=output_size, nhead=4, dropout=self.args.dropout, dim_feedforward=self.hidden_size).to(device)
-					sequence_model = self.transformer
+			# with torch.backends.cuda.sdp_kernel(enable_flash=False, enable_math=False, enable_mem_efficient=False):
+			if self.args.transformer=='encoder':			
+				self.transformer_encoder_layer = torch.nn.TransformerEncoderLayer(d_model=output_size, nhead=4, dropout=self.args.dropout, dim_feedforward=self.hidden_size).to(device)
+				self.transformer_encoder = torch.nn.TransformerEncoder(encoder_layer=self.transformer_encoder_layer, num_layers=6).to(device)
+				sequence_model = self.transformer_encoder
+			elif self.args.transformer=='full':
+				self.transformer = torch.nn.Transformer(d_model=output_size, nhead=4, dropout=self.args.dropout, dim_feedforward=self.hidden_size).to(device)
+				sequence_model = self.transformer
 
 			# Define output layers for the LSTM, and activations for this output layer. 
 			mean_output_layer = torch.nn.Linear(output_size, output_size).to(device)
@@ -2546,17 +2546,15 @@ class ContinuousEncoderNetwork(PolicyNetwork_BaseClass):
 
 		if self.args.transformer=='full':
 									
-			dummy_target = torch.zeros(1, batch_size, posembed_input.shape[-1]).to(device)
-			with torch.backends.cuda.sdp_kernel(enable_flash=False, enable_math=False, enable_mem_efficient=False):
-				outputs = network_dict['sequence_model'](posembed_input, dummy_target)
+			dummy_target = torch.zeros(1, batch_size, posembed_input.shape[-1]).to(device)		
+			outputs = network_dict['sequence_model'](posembed_input, dummy_target)
 
 			# Here, copy. 
 			concatenated_outputs = outputs		
 
 		elif self.args.transformer=='encoder':
-
-			with torch.backends.cuda.sdp_kernel(enable_flash=False, enable_math=False, enable_mem_efficient=False):
-				outputs = network_dict['sequence_model'](posembed_input)
+	
+			outputs = network_dict['sequence_model'](posembed_input)
 			# For the transformer encoder, just take last value. 
 			concatenated_outputs = outputs[-1].view(1, batch_size, -1)
 		else:			
