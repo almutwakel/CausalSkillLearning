@@ -2835,11 +2835,15 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			individual_task_indices.append( self.dataset.individual_task_list.index( self.dataset.compositional_task_sets[ self.dataset.task_list[self.task_id_set[k]] ][index] ) )						
 
 		# Now for each compositional task, plot things with a particular marker. 
-		marker_list = ['o', '*', 's']
+		marker_list = ['o', 'D', 's']
+		max_task = 4 
+		individual_task_indices_array = np.array(individual_task_indices)[np.array(per_compositional_task_indices[v])]
+		colors = 0.1 + (0.75*(individual_task_indices_array/max_task))
+
 		for k, v in enumerate(self.dataset.task_list):			
 
 			ax.scatter(embedded_zs[np.array(per_compositional_task_indices[v]),0], embedded_zs[np.array(per_compositional_task_indices[v]),1], \
-			  c=np.array(individual_task_indices)[np.array(per_compositional_task_indices[v])],marker=marker_list[k],vmin=0,vmax=1,cmap='jet',edgecolors='black')
+			  c=colors,marker=marker_list[k],vmin=0,vmax=1,cmap='jet',edgecolors='black')
 
 		# Title. 
 		ax.set_title("{0}".format(title),fontdict={'fontsize':15})
