@@ -2847,18 +2847,18 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			# ##############################
 			# # PLOT OPTION 1 - markers 
 			# ##############################		
-			# ax.scatter(xs, ys, c=colors, marker=marker_list[k], vmin=0, vmax=1, cmap='jet', edgecolors='black')			
+			ax.scatter(xs, ys, c=colors, marker=marker_list[k], vmin=0, vmax=1, s=100, cmap='jet', edgecolors='black')			
 			
-			##############################
-			# # PLOT OPTION 2 - no markers, just bigger plots and colors
-			##############################
+			# ##############################
+			# # # PLOT OPTION 2 - no markers, just bigger plots and colors
+			# ##############################
 
-			# First plot with compositional task colors with bigger sizes. 
-			new_colors = 0.1 + 0.75*k*np.ones_like(colors)
-			ax.scatter(xs, ys, c=new_colors, vmin=0, vmax=1, marker=marker_list[k], s=200, cmap='jet', edgecolors='black')
+			# # First plot with compositional task colors with bigger sizes. 
+			# new_colors = 0.1 + 0.75*(k/2)*np.ones_like(colors)
+			# ax.scatter(xs, ys, c=new_colors, vmin=0, vmax=1, marker=marker_list[k], s=200, cmap='jet', edgecolors='black')
 
-			# Then plot with task colors.
-			ax.scatter(xs, ys, c=colors, vmin=0, vmax=1, cmap='jet', edgecolors='black')
+			# # Then plot with task colors.
+			# ax.scatter(xs, ys, c=colors, vmin=0, vmax=1, cmap='jet', edgecolors='black')
 
 		# Title. 
 		ax.set_title("{0}".format(title),fontdict={'fontsize':15})
