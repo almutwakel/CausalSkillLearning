@@ -2855,7 +2855,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 
 			# First plot with compositional task colors with bigger sizes. 
 			new_colors = 0.1 + 0.75*k*np.ones_like(colors)
-			ax.scatter(xs, ys, c=new_colors, vmin=0, vmax=1, s=60, cmap='jet', edgecolors='black')
+			ax.scatter(xs, ys, c=new_colors, vmin=0, vmax=1, marker=marker_list[k], s=200, cmap='jet', edgecolors='black')
 
 			# Then plot with task colors.
 			ax.scatter(xs, ys, c=colors, vmin=0, vmax=1, cmap='jet', edgecolors='black')
