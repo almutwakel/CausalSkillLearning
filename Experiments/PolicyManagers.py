@@ -2836,6 +2836,9 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		marker_list = ['o', 'D', 's']
 		max_task = 4 
 		individual_task_indices_array = np.array(individual_task_indices)[np.array(per_compositional_task_indices[v])]
+		print("embed")
+		embed()
+
 		colors = 0.1 + (0.75*(individual_task_indices_array/max_task))
 
 		for k, v in enumerate(self.dataset.task_list):			
