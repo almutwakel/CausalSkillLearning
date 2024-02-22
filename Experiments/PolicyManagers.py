@@ -2853,10 +2853,12 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			# # PLOT OPTION 2 - no markers, just bigger plots and colors
 			##############################
 
-			# First plot with task colors.
+			# First plot with compositional task colors with bigger sizes. 
+			new_colors = 0.1 + 0.75*k*np.ones_like(colors)
+			ax.scatter(xs, ys, c=new_colors, vmin=0, vmax=1, s=60, cmap='jet', edgecolors='black')
+
+			# Then plot with task colors.
 			ax.scatter(xs, ys, c=colors, vmin=0, vmax=1, cmap='jet', edgecolors='black')
-			# Next plot again with compositional task colors. 
-			ax.scatter(xs, ys, c=k*np.ones_like(colors), vmin=0, vmax=1, s=50, cmap='jet', edgecolors='black')
 
 		# Title. 
 		ax.set_title("{0}".format(title),fontdict={'fontsize':15})
