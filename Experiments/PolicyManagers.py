@@ -2853,7 +2853,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 
 	def plot_embedding(self, embedded_zs, title, shared=False, trajectory=False):
 	
-		if self.args.data in ['RealWorldRigidHumanNNTransferCompositional']:
+		if (self.args.data in ['RealWorldRigidHumanNNTransferCompositional']) and (shared==False):
 			image = self.plot_embedding_for_H2RCompositionalTransfer(embedded_zs, title)
 		else: 
 
