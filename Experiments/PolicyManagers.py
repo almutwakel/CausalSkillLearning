@@ -2856,7 +2856,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			# First plot with task colors.
 			ax.scatter(xs, ys, c=colors, vmin=0, vmax=1, cmap='jet', edgecolors='black')
 			# Next plot again with compositional task colors. 
-			ax.scatter(xs, ys, c=k, vmin=0, vmax=1, s=50, cmap='jet', edgecolors='black')
+			ax.scatter(xs, ys, c=k*np.ones_like(colors), vmin=0, vmax=1, s=50, cmap='jet', edgecolors='black')
 
 		# Title. 
 		ax.set_title("{0}".format(title),fontdict={'fontsize':15})
