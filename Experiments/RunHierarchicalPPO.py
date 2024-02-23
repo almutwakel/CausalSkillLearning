@@ -64,7 +64,10 @@ if __name__ == '__main__':
 	parser.add_argument('--hidden_size',dest='hidden_size',type=int,default=64)
 	parser.add_argument('--var_number_layers',dest='var_number_layers',type=int,default=5)
 	parser.add_argument('--var_hidden_size',dest='var_hidden_size',type=int,default=64)
+	parser.add_argument('--robot_state_size',dest='robot_state_size',type=int,default=8,help='Default robot state size.')
+	parser.add_argument('--env_state_size',dest='env_state_size',type=int,default=7,help='Default environment state size.')
 	parser.add_argument('--dropout',dest='dropout',type=float,default=0.,help='Whether to set dropout.') 
+	parser.add_argument('--z_dimensions',dest='z_dimensions',type=int,default=64)
 	####################################################
 	# PPO arguments
 	####################################################
