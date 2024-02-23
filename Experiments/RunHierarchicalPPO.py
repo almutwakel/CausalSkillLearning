@@ -60,7 +60,11 @@ if __name__ == '__main__':
 	# Policy arguments
 	parser.add_argument('--positional_encoding',dest='positional_encoding',type=float, default=0., help='Whether or not to use positional encoding layers in the models.')
 	parser.add_argument('--variance_factor',dest='variance_factor',type=float,default=0.01,help='Factor by which to multiple variance value predicted by network.')
-
+	parser.add_argument('--number_layers',dest='number_layers',type=int,default=5)
+	parser.add_argument('--hidden_size',dest='hidden_size',type=int,default=64)
+	parser.add_argument('--var_number_layers',dest='var_number_layers',type=int,default=5)
+	parser.add_argument('--var_hidden_size',dest='var_hidden_size',type=int,default=64)
+	parser.add_argument('--dropout',dest='dropout',type=float,default=0.,help='Whether to set dropout.') 
 	####################################################
 	# PPO arguments
 	####################################################
