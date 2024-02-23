@@ -3707,7 +3707,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 				update_dict = input_dict
 				update_dict['latent_z'] = latent_z				
 
-				if i == 2780:
+				if i > 2700:
 					print('At', i)
 					embed()
 
