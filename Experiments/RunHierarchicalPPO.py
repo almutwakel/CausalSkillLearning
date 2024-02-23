@@ -34,7 +34,7 @@ if __name__ == '__main__':
 	feature_parser.add_argument('--no-train', dest='train', action='store_false')
 	parser.set_defaults(train=True)
 	parser.add_argument('--model', dest='model', type=str,                                          help='Model to load.')
-
+	parser.add_argument('--debug', dest='debug', type=int, default=0,                             	help='Whether to run in debug mode.')
 	parser.add_argument('--render', dest='render', type=int, default=1,                             help='Whether to render an episode.')
 	parser.add_argument('--evaluate', dest='evaluate', type=int, default=1,                         help='Whether to evaluate.')
 	parser.add_argument('--hierarchical', dest='hierarchical', type=int, default=0,                 help='Whether to run Hierarchical PPO or Flat PPO.')
