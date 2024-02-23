@@ -50,13 +50,16 @@ if __name__ == '__main__':
 	parser.add_argument('--action_scaling', dest='action_scaling', type=float, default=1.,                      help='How much to scale actions by.')
 
 	####################################################
-	# ARguments to evaluate translated zs. 
+	# Arguments to evaluate translated zs. 
 	parser.add_argument('--evaluate_translated_zs', dest='evaluate_translated_zs', type=int, default=0, help='Whether to use translated zs to evaluate.')
 	parser.add_argument('--translated_z_file', dest='translated_z_file', type=str, default=None, help='File to load zs from.')
 
 	# parser.add_argument('--translated_z_file', dest='translated_z_file', type=str, default=None, help='File to load zs from.')
 
 	####################################################
+	# Policy arguments
+	parser.add_argument('--positional_encoding',dest='positional_encoding',type=float, default=0., help='Whether or not to use positional encoding layers in the models.')
+	parser.add_argument('--variance_factor',dest='variance_factor',type=float,default=0.01,help='Factor by which to multiple variance value predicted by network.')
 
 	####################################################
 	# PPO arguments
