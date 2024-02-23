@@ -331,12 +331,13 @@ def parse_arguments():
 	parser.add_argument('--hidden_size',dest='hidden_size',type=int,default=64)
 	parser.add_argument('--var_number_layers',dest='var_number_layers',type=int,default=5)
 	parser.add_argument('--var_hidden_size',dest='var_hidden_size',type=int,default=64)
+	parser.add_argument('--transformer_n_heads', dest='transformer_n_heads', type=int, default=8)
 	parser.add_argument('--dropout',dest='dropout',type=float,default=0.,help='Whether to set dropout.') 
 	parser.add_argument('--mlp_dropout',dest='mlp_dropout',type=float,default=0.,help='Whether to set dropout.') 
 	parser.add_argument('--batch_norm',dest='batch_norm',type=int,default=0,help='Whether to use batch norm.')
 	parser.add_argument('--leaky_relu',dest='leaky_relu',type=int,default=0,help='Whether to use leaky relu (or just vanilla relu).')
 	parser.add_argument('--environment',dest='environment',type=str,default='SawyerLift') # Defines robosuite environment for RL.
-	parser.add_argument('--target_environment',dest='target_environment',type=str,default='SawyerLift') # Defines robosuite environment for RL.
+	parser.add_argument('--target_environment',dest='target_environment',type=str,default='SawyerLift') # Defines robosuite environment for RL.	
 	
 	# Variance parameters. 
 	parser.add_argument('--variance_factor',dest='variance_factor',type=float,default=0.01,help='Factor by which to multiple variance value predicted by network.')
@@ -348,7 +349,6 @@ def parse_arguments():
 	parser.add_argument('--initial_policy_variance',dest='initial_policy_variance',type=float,default=0.1)
 	parser.add_argument('--final_policy_variance',dest='final_policy_variance',type=float,default=0.0001)
 	parser.add_argument('--policy_variance_decay_over',dest='policy_variance_decay_over',type=int,default=200)
-
 
 	# Data parameters. 
 	parser.add_argument('--traj_segments',dest='traj_segments',type=int,default=1) # Defines whether to use trajectory segments for pretraining or entire trajectories. Useful for baseline implementation.
