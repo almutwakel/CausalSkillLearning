@@ -576,6 +576,9 @@ class Roboturk_NewSegmentedDataset(Dataset):
 		if index>=self.total_length:
 			print("Out of bounds of dataset.")
 			return None
+		
+		if index in self.bad_original_index_list:
+			index += 1
 
 		# Get bucket that index falls into based on num_demos array. 
 		task_index = np.searchsorted(self.cummulative_num_demos, index, side='right')-1
