@@ -3796,7 +3796,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 				
 				update_dict = input_dict
 				update_dict['latent_z'] = latent_z			
-				update_dict['input_torch_trajectory']	= torch_traj_seg
+				update_dict['input_torch_trajectory'] = torch_traj_seg
 				
 				self.update_policies_reparam(loglikelihood, kl_divergence, update_dict=update_dict)
 
@@ -7205,7 +7205,8 @@ class PolicyManager_BatchJoint(PolicyManager_Joint):
 			else:
 				self.variational_policy = ContinuousContextualVariationalPolicyNetwork(self.input_size, self.args.var_hidden_size, self.latent_z_dimensionality, self.args, number_layers=self.args.var_number_layers).to(device)
 		else:
-			if self.args.data in ['RealWorldRigid'] or self.args.split_stream_encoder==1:
+			if self.args.data in ['RealWorldRigid','RealWorldRigidHumanNNTransfer', 'RealWorldRigidHumanNNTransferCompositional', 'RealWorldRigidHumanNNTransferFull'] or self.args.split_stream_encoder==1:
+				
 				print("Making a Factored Segmenter Network.")
 				self.variational_policy = ContinuousSequentialFactoredEncoderNetwork(self.input_size, self.args.var_hidden_size, int(self.latent_z_dimensionality/2), self.args).to(device)
 				# self.variational_policy = ContinuousEncoderNetwork(self.input_size, self.args.var_hidden_size, self.latent_z_dimensionality, self.args).to(device)

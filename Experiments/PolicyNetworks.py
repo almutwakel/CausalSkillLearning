@@ -2775,8 +2775,9 @@ class ContinuousSequentialFactoredEncoderNetwork(ContinuousFactoredEncoderNetwor
 		# Using its own init function.
 		super(ContinuousSequentialFactoredEncoderNetwork, self).__init__(input_size, hidden_size, output_size, args)
 
-	def run_super_forward(self, input, epsilon=0.00001, network_dict={}, size_dict={}, z_sample_to_evaluate=None, greedy=False):
-		return super().forward(input, epsilon, network_dict, size_dict, z_sample_to_evaluate, greedy)
+	def run_super_forward(self, input, epsilon=0.00001, network_dict={}, size_dict={}, z_sample_to_evaluate=None, greedy=False, positional_encoding_offsets=None):
+	
+		return super().forward(input, epsilon, network_dict, size_dict, z_sample_to_evaluate, greedy, positional_encoding_offsets)
 
 	def make_dummy_latents(self, latent_z, traj_len):
 
@@ -2851,6 +2852,9 @@ class ContinuousSequentialFactoredEncoderNetwork(ContinuousFactoredEncoderNetwor
 
 		z_list = []
 		for k, trajectory_segment in enumerate(state_action_trajectory_segments):
+
+			# Need to add in positonal encoding offests!
+			print("CURRENTLY, DO NOT HAVE POSITIONAL ENCODING OFFSET")
 			segment_latent_z, _, _, _  = self.run_super_forward(trajectory_segment, epsilon, greedy=True)
 			z_list.append(segment_latent_z)
 		
