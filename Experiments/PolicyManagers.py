@@ -602,7 +602,6 @@ class PolicyManager_BaseClass():
 				# (1) Encode trajectory. 
 				if self.args.setting in ['learntsub','joint', 'queryjoint']:
 					
-					
 					input_dict, var_dict = self.run_iteration(0, j, return_dicts=True, train=False)
 					latent_z = var_dict['latent_z_indices']
 					sample_trajs = input_dict['sample_traj']
@@ -4940,6 +4939,15 @@ class PolicyManager_Joint(PolicyManager_BaseClass):
 		self.conditional_info_size = 6
 		self.test_set_size = 50
 
+		stat_dir_name = self.dataset.stat_dir_name
+		if self.args.normalization=='meanvar':
+			self.norm_sub_value = np.load("Statistics/{0}/{0}_Mean.npy".format(stat_dir_name))
+			self.norm_denom_value = np.load("Statistics/{0}/{0}_Var.npy".format(stat_dir_name))
+		elif self.args.normalization=='minmax':
+			self.norm_sub_value = np.load("Statistics/{0}/{0}_Min.npy".format(stat_dir_name))
+			self.norm_denom_value = np.load("Statistics/{0}/{0}_Max.npy".format(stat_dir_name)) - self.norm_sub_value
+
+
 		if self.args.data in ['ContinuousNonZero','DirContNonZero','ToyContext']:
 			self.conditional_info_size = self.args.condition_size
 			self.conditional_viz_env = False
@@ -5002,7 +5010,6 @@ class PolicyManager_Joint(PolicyManager_BaseClass):
 			self.number_tasks = 8
 			self.conditional_info_size = self.cond_robot_state_size+self.cond_object_state_size+self.number_tasks
 			
-
 		elif self.args.data=='Mocap':
 			self.state_size = 22*3
 			self.state_dim = 22*3	
@@ -5316,7 +5323,6 @@ class PolicyManager_Joint(PolicyManager_BaseClass):
 			self.norm_sub_value = self.norm_sub_value[:self.state_dim]
 			self.norm_denom_value = self.norm_denom_value[:self.state_dim]
 			
-
 		elif self.args.data=='RoboturkObjects':
 			# self.state_size = 14
 			# self.state_dim = 14
@@ -5378,6 +5384,36 @@ class PolicyManager_Joint(PolicyManager_BaseClass):
 			self.traj_length = self.args.traj_length
 			self.conditional_info_size = 0
 			self.test_set_size = 0
+
+		elif self.args.data in ['RealWorldRigidHumanNNTransfer', 'RealWorldRigidHumanNNTransferCompositional', 'RealWorldRigidHumanNNTransferFull']:
+
+			self.state_size = 21
+			self.state_dim = 21
+			self.input_size = 2*self.state_size
+
+			# We deleted 18 dims from hand state
+			norm_indices = np.concatenate([ np.arange(0,3), np.arange(21,25), np.arange(25, 39)])
+			self.norm_sub_value = self.norm_sub_value[norm_indices]
+			self.norm_denom_value = self.norm_denom_value[norm_indices]
+			self.norm_denom_value /= self.args.state_scale_factor
+
+			self.hidden_size = self.args.hidden_size
+			self.output_size = self.state_size
+			self.traj_length = self.args.traj_length
+			self.conditional_info_size = 0
+			self.test_set_size = 0
+
+			# Hand orientation. 
+			self.norm_denom_value[21-18:25-18] = 1.
+			self.norm_sub_value[21-18:25-18] = 0. 
+
+			# Object 1 Orientation:
+			self.norm_denom_value[28-18:32-18] = 1.
+			self.norm_sub_value[28-18:32-18] = 0. 
+
+			# Object 2 Orientation. 
+			self.norm_denom_value[35-18:39-18] = 1.
+			self.norm_sub_value[35-18:39-18] = 0. 		
 
 		self.training_phase_size = self.args.training_phase_size
 		self.number_epochs = self.args.epochs
@@ -6564,7 +6600,7 @@ class PolicyManager_Joint(PolicyManager_BaseClass):
 
 			self.visualize_robot_data()
 
-			if self.args.data in ['RealWorldRigid']:
+			if self.args.data in ['RealWorldRigid', 'RealWorldRigidHumanNNTransfer', 'RealWorldRigidHumanNNTransferCompositional', 'RealWorldRigidHumanNNTransferFull']:
 				print("Entering Query Mode")
 				embed()
 				return 
@@ -6573,17 +6609,17 @@ class PolicyManager_Joint(PolicyManager_BaseClass):
 			# Run Pretrain Eval.
 			########################################
 
-			
-			arg_copy = copy.deepcopy(self.args)
-			arg_copy.name += "_Eval_Pretrain"
-			if self.args.batch_size>1:
-				self.pretrain_policy_manager = PolicyManager_BatchPretrain(self.args.number_policies, self.dataset, arg_copy)
-			else:
-				self.pretrain_policy_manager = PolicyManager_Pretrain(self.args.number_policies, self.dataset, arg_copy)
+			else:			
+				arg_copy = copy.deepcopy(self.args)
+				arg_copy.name += "_Eval_Pretrain"
+				if self.args.batch_size>1:
+					self.pretrain_policy_manager = PolicyManager_BatchPretrain(self.args.number_policies, self.dataset, arg_copy)
+				else:
+					self.pretrain_policy_manager = PolicyManager_Pretrain(self.args.number_policies, self.dataset, arg_copy)
 
-			self.pretrain_policy_manager.setup()
-			self.pretrain_policy_manager.load_all_models(model, only_policy=True)			
-			self.pretrain_policy_manager.visualize_robot_data()			
+				self.pretrain_policy_manager.setup()
+				self.pretrain_policy_manager.load_all_models(model, only_policy=True)			
+				self.pretrain_policy_manager.visualize_robot_data()			
 
 		elif self.args.data in ['ContinuousNonZero','DirContNonZero','ToyContext']:
 			print("Running visualization of embedding space.")
@@ -7556,7 +7592,11 @@ class PolicyManager_BatchJointQueryMode(PolicyManager_BatchJoint):
 				embed()		
 
 		if return_dicts:
-			return input_dictionary, variational_dict, None
+
+			if train and self.args.train:
+				return input_dictionary, variational_dict, None
+			else:
+				return input_dictionary, variational_dict
 
 class PolicyManager_BaselineRL(PolicyManager_BaseClass):
 

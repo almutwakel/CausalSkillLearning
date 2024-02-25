@@ -346,7 +346,7 @@ def parse_arguments():
 	parser.add_argument('--variance_value',dest='variance_value',type=float,default=0.1,help='Variance value for network distributions.')
 	parser.add_argument('--epsilon_scale_factor',dest='epsilon_scale_factor',type=float,default=100.,help='Factor by which to scale variance down for variance.')
 	# Setting parameters for linear annealing of variance.
-	parser.add_argument('--initial_policy_variance',dest='initial_policy_variance',type=float,default=0.1)
+	parser.add_argument('--initial_policy_variance',dest='initial_policy_variance',type=float,default=0.0001)
 	parser.add_argument('--final_policy_variance',dest='final_policy_variance',type=float,default=0.0001)
 	parser.add_argument('--policy_variance_decay_over',dest='policy_variance_decay_over',type=int,default=200)
 

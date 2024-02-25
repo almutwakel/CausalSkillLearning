@@ -2849,13 +2849,14 @@ class ContinuousSequentialFactoredEncoderNetwork(ContinuousFactoredEncoderNetwor
 		################################
 		# 2) Individually encode each segment. 
 		################################
-
+		
 		z_list = []
-		for k, trajectory_segment in enumerate(state_action_trajectory_segments):
+		for k, trajectory_segment in enumerate(state_action_trajectory_segments):				
+			
+			# Need to add in positonal encoding offests!			
+			positional_offsets = segment_indices[k]*np.ones((self.args.batch_size),dtype=int)
 
-			# Need to add in positonal encoding offests!
-			print("CURRENTLY, DO NOT HAVE POSITIONAL ENCODING OFFSET")
-			segment_latent_z, _, _, _  = self.run_super_forward(trajectory_segment, epsilon, greedy=True)
+			segment_latent_z, _, _, _  = self.run_super_forward(trajectory_segment, epsilon, greedy=True, positional_encoding_offsets=positional_offsets)
 			z_list.append(segment_latent_z)
 		
 		################################
