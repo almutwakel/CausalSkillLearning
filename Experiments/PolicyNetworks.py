@@ -2808,9 +2808,13 @@ class ContinuousSequentialFactoredEncoderNetwork(ContinuousFactoredEncoderNetwor
 		concatenated_zs = torch.cat(dummy_z_list, dim=0)
 
 		# Should this be -1 or should we reshape and do 0?
-		concatenated_bs = torch.cat(dummy_b_list, dim=-1)			
+		concatenated_bs = torch.cat(dummy_b_list, dim=-1)
 
-		return concatenated_zs, concatenated_bs
+		# Transpose this. 
+		transposed_bs = torch.transpose(concatenated_bs, 0, 1)
+
+		# return concatenated_zs, concatenated_bs
+		return concatenated_zs, transposed_bs
 			
 	def forward(self, input, epsilon=0.00001, network_dict={}, size_dict={}, z_sample_to_evaluate=None):
 

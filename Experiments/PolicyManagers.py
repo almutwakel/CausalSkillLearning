@@ -606,7 +606,10 @@ class PolicyManager_BaseClass():
 					latent_z = var_dict['latent_z_indices']
 					sample_trajs = input_dict['sample_traj']
 					data_element = input_dict['data_element']
-					latent_b = torch.swapaxes(var_dict['latent_b'], 1,0)
+
+					print("temporarily removing swap")
+					# latent_b = torch.swapaxes(var_dict['latent_b'], 1,0)					
+					latent_b = var_dict['latent_b']
 
 					# Generate segment index list..
 					self.generate_segment_indices(latent_b)
@@ -1800,7 +1803,11 @@ class PolicyManager_BaseClass():
 		# Task based shuffling.
 		elif self.args.task_discriminability or self.args.task_based_supervision or self.args.task_based_shuffling:						
 			self.task_based_shuffling(extent=extent,shuffle=shuffle)							
-						
+
+		# No shuffling for query mode. 
+		elif isinstance(self, PolicyManager_BatchJointQueryMode):
+			self.sorted_indices = np.arange(0,len(self.dataset))
+
 		# Random shuffling.
 		else:
 
@@ -1809,6 +1816,7 @@ class PolicyManager_BaseClass():
 			################################
 			self.random_shuffle(extent)
 
+		
 class PolicyManager_Pretrain(PolicyManager_BaseClass):
 
 	def __init__(self, number_policies=4, dataset=None, args=None):
@@ -6601,6 +6609,9 @@ class PolicyManager_Joint(PolicyManager_BaseClass):
 			self.visualize_robot_data()
 
 			if self.args.data in ['RealWorldRigid', 'RealWorldRigidHumanNNTransfer', 'RealWorldRigidHumanNNTransferCompositional', 'RealWorldRigidHumanNNTransferFull']:
+
+				self.retrieve_cross_domain_zs()
+				
 				print("Entering Query Mode")
 				embed()
 				return 
@@ -6696,7 +6707,10 @@ class PolicyManager_Joint(PolicyManager_BaseClass):
 
 			# (1) Encoder trajectory. 
 			with torch.no_grad():
-				input_dict, variational_dict, _ = self.run_iteration(0, i, return_dicts=True, train=False)
+				print("Assuming RWR / RWH2R")
+				input_dict, variational_dict = self.run_iteration(0, i, return_dicts=True, train=False)
+
+				# input_dict, variational_dict, _ = self.run_iteration(0, i, return_dicts=True, train=False)
 
 			# Getting latent_b_set and full z traj.
 			# Don't unbatch them yet.
@@ -6721,10 +6735,6 @@ class PolicyManager_Joint(PolicyManager_BaseClass):
 				if self.args.z_tuple_gmm:
 					self.number_distinct_zs.append(len(distinct_z_indices))
 				
-
-				# print("Embedding in Traj Setting Business")
-				# embed()
-
 				# Copy over these into lists.
 				self.latent_z_set.append(copy.deepcopy(distinct_zs))
 				self.trajectory_set.append(copy.deepcopy(input_dict['sample_traj'][:,b]))
@@ -7597,6 +7607,24 @@ class PolicyManager_BatchJointQueryMode(PolicyManager_BatchJoint):
 				return input_dictionary, variational_dict, None
 			else:
 				return input_dictionary, variational_dict
+
+	def retrieve_cross_domain_zs(self):
+
+		print("Gettig Z Sets.")		
+		self.get_latent_trajectory_segmentation_sets(N=len(self.dataset))
+
+		print("Saving Z Sets.")
+		
+		base_dir = os.path.join(self.args.logdir, self.args.name)
+		if not(os.path.isdir(base_dir)):
+			os.mkdir(base_dir)
+
+		save_dir = os.path.join(base_dir, "SavedQueryInfo")
+		if not(os.path.isdir(save_dir)):
+			os.mkdir(save_dir)
+
+		np.save(os.path.join(save_dir, "Z_Set.npy"), self.latent_z_set)	
+		np.save(os.path.join(save_dir, "Trajectory_Set.npy"), self.trajectory_set)	
 
 class PolicyManager_BaselineRL(PolicyManager_BaseClass):
 
