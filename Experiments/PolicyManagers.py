@@ -3707,10 +3707,6 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 				update_dict = input_dict
 				update_dict['latent_z'] = latent_z				
 
-				if i > 2700:
-					print('At', i)
-					embed()
-
 				self.update_policies_reparam(loglikelihood, kl_divergence, update_dict=update_dict)
 
 				####################################
