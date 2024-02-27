@@ -6615,7 +6615,8 @@ class PolicyManager_Joint(PolicyManager_BaseClass):
 
 				# self.retrieve_cross_domain_zs()
 				self.create_store_same_domain_zs()
-				self.run_H2R_zeroshot_queries()
+				if self.args.query_run_name is not None:
+					self.run_H2R_zeroshot_queries()
 
 				print("Entering Query Mode")
 				embed()						
