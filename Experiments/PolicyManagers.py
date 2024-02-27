@@ -7634,7 +7634,8 @@ class PolicyManager_BatchJointQueryMode(PolicyManager_BatchJoint):
 		np.save(os.path.join(save_dir, "Z_Set.npy"), self.latent_z_set)	
 		np.save(os.path.join(save_dir, "Trajectory_Set.npy"), self.trajectory_set)	
 		np.save(os.path.join(save_dir, "Segmentation_Set.npy"), self.segmentation_set)
-		np.save(os.path.join(save_dir, "Segmentation_Trajectory_Set"), self.segmented_trajectory_set)
+		# np.save(os.path.join(save_dir, "Segmentation_Trajectory_Set.npy"), self.segmented_trajectory_set)
+		np.save(os.path.join(save_dir, "Segmentation_Trajectory_Set.npy"), np.array(self.segmented_trajectory_set, dtype=object))
 
 	def load_query_run_zs(self):
 
