@@ -7716,9 +7716,14 @@ class PolicyManager_BatchJointQueryMode(PolicyManager_BatchJoint):
 		# For the number of query trajectories. 
 		for k in range(len(self.query_trajectory_set)):
 			
+			print("################################")
+			print("Retrieve nearest neighbor z's for trajectory: ", k)
 			# For each trajectory, query the model for the nearest set of env zs, then retrieve corresponding robot zs. 
 			nearest_zs = self.retrieve_nearest_neighbors(self.query_latent_z_set[k])
 
+			print("################################")
+			print("Currently setting robot state wrong.")
+			# How to set robot 		
 			rolled_out_robot_traj, _ = self.partitioned_rollout_robot_trajectory(trajectory_start=self.query_trajectory_set[k][0], latent_z=nearest_zs, segment_indices=self.query_segmentation_set[k])
 
 			self.retrieved_rollout_robot_trajectories.append(rolled_out_robot_traj)
