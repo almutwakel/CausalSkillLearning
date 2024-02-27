@@ -7760,9 +7760,16 @@ class PolicyManager_BatchJointQueryMode(PolicyManager_BatchJoint):
 			os.mkdir(save_dir)
 
 		for k, v in enumerate(self.retrieved_rollout_robot_trajectories):
-			np.save(os.path.join(save_dir, "Z_{0}.npy".format(k)), self.retrieved_nearest_neighbour_zs[k])	
+			# np.save(os.path.join(save_dir, "Z_{0}.npy".format(k)), self.retrieved_nearest_neighbour_zs[k])	
 			np.save(os.path.join(save_dir, "Trajectory_{0}.npy".format(k)), self.retrieved_rollout_robot_trajectories[k])
 
+		z_save_dir = os.path.join(base_dir, "SavedIndividualRolloutZs")
+		if not(os.path.isdir(z_save_dir)):
+			os.mkdir(z_save_dir)
+
+		for k, v in enumerate(self.retrieved_rollout_robot_trajectories):
+			np.save(os.path.join(z_save_dir, "Z_{0}.npy".format(k)), self.retrieved_nearest_neighbour_zs[k])	
+			# np.save(os.path.join(z_save_dir, "Trajectory_{0}.npy".format(k)), self.retrieved_rollout_robot_trajectories[k])
 
 class PolicyManager_BaselineRL(PolicyManager_BaseClass):
 
