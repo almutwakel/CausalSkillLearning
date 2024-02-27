@@ -6745,6 +6745,9 @@ class PolicyManager_Joint(PolicyManager_BaseClass):
 				# Get distinct z's.
 				distinct_zs = variational_dict['latent_z_indices'][distinct_z_indices, b].clone().detach().cpu().numpy()
 
+				# print("Embedding in getting sets")
+				# embed()
+
 				if self.args.z_tuple_gmm:
 					self.number_distinct_zs.append(len(distinct_z_indices))
 				
@@ -7688,7 +7691,31 @@ class PolicyManager_BatchJointQueryMode(PolicyManager_BatchJoint):
 		# Get the Joint Zs. 
 		nearest_zs = self.stream_latent_z_dict['joint'][nearest_env_z_indices]
 
-		return nearest_zs	
+		return nearest_zs, nearest_env_z_indices
+
+	def retrieve_start_state(self, nearest_neighbor_index=None, query_trajectory=None):
+
+		# Object Start State		
+		human_demo_object_start_state = query_trajectory[0][7:]
+
+		# Nearest Neighbor Indexes into Latent Z Set. This is a concatenation of self.latent_z_set. 
+		# Reverse Index into this. 
+		number_zs = np.zeros(len(self.latent_z_set))
+		for k, v in enumerate(self.latent_z_set):
+			number_zs[k] = v.shape[0]
+
+		# Find cumulative sum. 
+		cumulative_number_zs = np.cumsum(number_zs)
+		
+		# Find correct index - only doing this for the first nearest neighbor.. because we only need to know which Trajectory to use.. 
+		traj_index = np.searchsorted(cumulative_number_zs, nearest_neighbor_index[0], side='right')-1
+		# z_index = nearest_neighbor_index[0] - cumulative_number_zs[max(traj_index,0)]
+
+		robot_start_state = self.trajectory_set[traj_index][0][:7]
+
+		full_start_state = np.concatenate([robot_start_state, human_demo_object_start_state], axis=0)
+
+		return full_start_state
 
 	def run_H2R_zeroshot_queries(self):
 
@@ -7716,21 +7743,27 @@ class PolicyManager_BatchJointQueryMode(PolicyManager_BatchJoint):
 		self.retrieved_nearest_neighbour_zs = []
 
 		print("################################")
+		print("################################")
 		print("Retrieving NN Latent Zs and Rolled Out Trajectories.")
 		# For the number of query trajectories. 
 		for k in range(len(self.query_trajectory_set)):
 			
-			print("################################")
-			print("Retrieve nearest neighbor z's for trajectory: ", k)
+			print("##############")
+			print("Rolling out trajectory: ", k)
 			# For each trajectory, query the model for the nearest set of env zs, then retrieve corresponding robot zs. 
-			nearest_zs = self.retrieve_nearest_neighbors(self.query_latent_z_set[k])
+			nearest_zs, nearest_neighbor_index = self.retrieve_nearest_neighbors(self.query_latent_z_set[k])
 
-			print("################################")
-			print("Currently setting robot state wrong.")
-			# How to set robot 		
-			rolled_out_robot_traj, _ = self.partitioned_rollout_robot_trajectory(trajectory_start=self.query_trajectory_set[k][0], latent_z=nearest_zs, segment_indices=self.query_segmentation_set[k])
+			# Retrieving start state as start state of 1st nearest neighbor trajectory. 
+			# Logic is that the nearest neighbor z starts from Z_i, whose start state should be \tau_i^{t=0}. 
+			concatenated_start_state = self.retrieve_start_state(nearest_neighbor_index=nearest_neighbor_index, query_trajectory=self.query_trajectory_set[k])
 
-			self.retrieved_rollout_robot_trajectories.append(rolled_out_robot_traj)
+			# Actually rollout trajectory. 
+			rolled_out_robot_traj, _ = self.partitioned_rollout_robot_trajectory(trajectory_start=concatenated_start_state, latent_z=nearest_zs, segment_indices=self.query_segmentation_set[k])
+
+			# Unnormalize full trajectory. 
+			unnormalized_trajectory = self.unnormalize_trajectory(rolled_out_robot_traj)
+
+			self.retrieved_rollout_robot_trajectories.append(unnormalized_trajectory)
 			self.retrieved_nearest_neighbour_zs.append(nearest_zs)
 
 		self.save_trajectories()
