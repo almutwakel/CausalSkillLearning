@@ -6615,7 +6615,8 @@ class PolicyManager_Joint(PolicyManager_BaseClass):
 
 				# self.retrieve_cross_domain_zs()
 				self.create_store_same_domain_zs()
-				
+				self.run_H2R_zeroshot_queries()
+
 				print("Entering Query Mode")
 				embed()						
 
@@ -7690,13 +7691,16 @@ class PolicyManager_BatchJointQueryMode(PolicyManager_BatchJoint):
 		#################################
 		# 1) First Load Query Zs. 
 		#################################
-			
+		
+		print("################################")
+		print("Running Zero-Shot Querying of H2R Trajectories.")
 		self.load_query_run_zs()
 
 		#################################
 		# 2) Retrieve NNs. 
 		#################################
 
+		print("################################")
 		print("About to create KD Trees")
 		self.create_kd_trees(self.latent_z_set)
 
@@ -7707,6 +7711,8 @@ class PolicyManager_BatchJointQueryMode(PolicyManager_BatchJoint):
 		self.retrieved_rollout_robot_trajectories = []
 		self.retrieved_nearest_neighbour_zs = []
 
+		print("################################")
+		print("Retrieving NN Latent Zs and Rolled Out Trajectories.")
 		# For the number of query trajectories. 
 		for k in range(len(self.query_trajectory_set)):
 			
@@ -7718,7 +7724,7 @@ class PolicyManager_BatchJointQueryMode(PolicyManager_BatchJoint):
 			self.retrieved_rollout_robot_trajectories.append(rolled_out_robot_traj)
 			self.retrieved_nearest_neighbour_zs.append(nearest_zs)
 
-		self.save_all_models()
+		self.save_trajectories()
 
 	def save_trajectories(self):
 	
