@@ -6617,9 +6617,11 @@ class PolicyManager_Joint(PolicyManager_BaseClass):
 				self.create_store_same_domain_zs()
 				if self.args.query_run_name is not None:
 					self.run_H2R_zeroshot_queries()
+					print("Entering Query Mode")
+					embed()						
 
-				print("Entering Query Mode")
-				embed()						
+				else:
+					self.visualize_robot_data()
 
 				return 
 		
@@ -7732,6 +7734,7 @@ class PolicyManager_BatchJointQueryMode(PolicyManager_BatchJoint):
 			self.retrieved_nearest_neighbour_zs.append(nearest_zs)
 
 		self.save_trajectories()
+		self.save_individual_trajectories()
 
 	def save_trajectories(self):
 	
@@ -7745,6 +7748,21 @@ class PolicyManager_BatchJointQueryMode(PolicyManager_BatchJoint):
 
 		np.save(os.path.join(save_dir, "Z_Set.npy"), self.retrieved_nearest_neighbour_zs)	
 		np.save(os.path.join(save_dir, "Trajectory_Set.npy"), self.retrieved_rollout_robot_trajectories)	
+
+	def save_individual_trajectories(self):
+
+		base_dir = os.path.join(self.args.logdir, self.args.name)
+		if not(os.path.isdir(base_dir)):
+			os.mkdir(base_dir)
+
+		save_dir = os.path.join(base_dir, "SavedIndividualRolloutTrajectories")
+		if not(os.path.isdir(save_dir)):
+			os.mkdir(save_dir)
+
+		for k, v in enumerate(self.retrieved_rollout_robot_trajectories):
+			np.save(os.path.join(save_dir, "Z_{0}.npy".format(k)), self.retrieved_nearest_neighbour_zs[k])	
+			np.save(os.path.join(save_dir, "Trajectory_{0}.npy".format(k)), self.retrieved_rollout_robot_trajectories[k])
+
 
 class PolicyManager_BaselineRL(PolicyManager_BaseClass):
 
