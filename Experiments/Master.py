@@ -316,6 +316,7 @@ def parse_arguments():
 	parser.add_argument('--setting',dest='setting',type=str,default='gtsub')
 	parser.add_argument('--test_code',dest='test_code',type=int,default=0)
 	parser.add_argument('--model',dest='model',type=str)
+	parser.add_argument('--query_run_name', dest='query_run_name', type=str, default=None, help='What run name to load query files from.')
 	parser.add_argument('--RL_model_path',dest='RL_model_path',type=str,help='High level policy model.')
 	# parser.add_argument('--logdir',dest='logdir',type=str,default='Experiment_Logs/')
 	parser.add_argument('--logdir',dest='logdir',type=str,default='ExpWandbLogs/')

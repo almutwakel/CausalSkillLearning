@@ -1069,7 +1069,10 @@ class PolicyManager_BaseClass():
 			segment_length = segment_indices[k+1] - segment_indices[k]
 
 			# Technically the latent z should be constant across the segment., so just set it to start value. 
-			segment_latent_z = latent_z[segment_indices[k]]
+			if isinstance(self, PolicyManager_BatchJointQueryMode):
+				segment_latent_z = latent_z[k]
+			else:
+				segment_latent_z = latent_z[segment_indices[k]]
 
 			# Rollout. 
 			rollout_trajectory_segment, _ = self.rollout_robot_trajectory(start_state, segment_latent_z, rollout_length=segment_length)
@@ -1773,8 +1776,12 @@ class PolicyManager_BaseClass():
 	
 		realdata = (self.args.data in global_dataset_list)
 
+		# No shuffling for query mode. 
+		if isinstance(self, PolicyManager_BatchJointQueryMode):
+			self.sorted_indices = np.arange(0,len(self.dataset))
+
 		# Length based shuffling.
-		if isinstance(self, PolicyManager_BatchJoint) or isinstance(self, PolicyManager_IKTrainer):
+		elif isinstance(self, PolicyManager_BatchJoint) or isinstance(self, PolicyManager_IKTrainer):
 
 			print("##############################")
 			print("##############################")
@@ -1803,10 +1810,6 @@ class PolicyManager_BaseClass():
 		# Task based shuffling.
 		elif self.args.task_discriminability or self.args.task_based_supervision or self.args.task_based_shuffling:						
 			self.task_based_shuffling(extent=extent,shuffle=shuffle)							
-
-		# No shuffling for query mode. 
-		elif isinstance(self, PolicyManager_BatchJointQueryMode):
-			self.sorted_indices = np.arange(0,len(self.dataset))
 
 		# Random shuffling.
 		else:
@@ -6606,21 +6609,27 @@ class PolicyManager_Joint(PolicyManager_BaseClass):
 			# Run Joint Eval.
 			########################################
 
-			self.visualize_robot_data()
+			# Moving this up.
 
 			if self.args.data in ['RealWorldRigid', 'RealWorldRigidHumanNNTransfer', 'RealWorldRigidHumanNNTransferCompositional', 'RealWorldRigidHumanNNTransferFull']:
 
-				self.retrieve_cross_domain_zs()
+				# self.retrieve_cross_domain_zs()
+				self.create_store_same_domain_zs()
 				
 				print("Entering Query Mode")
-				embed()
+				embed()						
+
 				return 
-			
+		
+
 			########################################
 			# Run Pretrain Eval.
 			########################################
 
 			else:			
+				
+				self.visualize_robot_data()
+
 				arg_copy = copy.deepcopy(self.args)
 				arg_copy.name += "_Eval_Pretrain"
 				if self.args.batch_size>1:
@@ -7259,7 +7268,6 @@ class PolicyManager_BatchJoint(PolicyManager_Joint):
 			else:
 				self.variational_policy = ContinuousVariationalPolicyNetwork_Batch(self.input_size, self.args.var_hidden_size, self.latent_z_dimensionality, self.args, number_layers=self.args.var_number_layers).to(device)
 		
-	# Batch concatenation functions. 
 	def concat_state_action(self, sample_traj, sample_action_seq):
 		# Add blank to start of action sequence and then concatenate. 
 		sample_action_seq = np.concatenate([np.zeros((self.args.batch_size,1,self.output_size)),sample_action_seq],axis=1)
@@ -7292,7 +7300,6 @@ class PolicyManager_BatchJoint(PolicyManager_Joint):
 			# self.batch_mask[b, :self.batch_trajectory_lengths[b]] = 1.
 			self.batch_mask[:self.batch_trajectory_lengths[b], b] = 1.
 
-	# Get batch full trajectory. 
 	def collect_inputs(self, i, get_latents=False, special_indices=None, called_from_train=False, bucket_index=None):
 
 		# print("# Debug task ID batching")
@@ -7607,8 +7614,8 @@ class PolicyManager_BatchJointQueryMode(PolicyManager_BatchJoint):
 				return input_dictionary, variational_dict, None
 			else:
 				return input_dictionary, variational_dict
-
-	def retrieve_cross_domain_zs(self):
+	
+	def create_store_same_domain_zs(self):
 
 		print("Gettig Z Sets.")		
 		self.get_latent_trajectory_segmentation_sets(N=len(self.dataset))
@@ -7625,6 +7632,106 @@ class PolicyManager_BatchJointQueryMode(PolicyManager_BatchJoint):
 
 		np.save(os.path.join(save_dir, "Z_Set.npy"), self.latent_z_set)	
 		np.save(os.path.join(save_dir, "Trajectory_Set.npy"), self.trajectory_set)	
+		np.save(os.path.join(save_dir, "Segmentation_Set.npy"), self.segmentation_set)
+		np.save(os.path.join(save_dir, "Segmentation_Trajectory_Set"), self.segmented_trajectory_set)
+
+	def load_query_run_zs(self):
+
+		print("Loading Human Dataset Query Zs etc.")
+		
+		base_dir = os.path.join(self.args.logdir, self.args.query_run_name, "SavedQueryInfo")
+		self.query_latent_z_set = np.load(os.path.join(base_dir, "Z_Set.npy"), allow_pickle=True)
+		self.query_trajectory_set = np.load(os.path.join(base_dir, "Trajectory_Set.npy"), allow_pickle=True)
+		self.query_segmentation_set = np.load(os.path.join(base_dir, "Segmentation_Set.npy"), allow_pickle=True)
+		self.query_segmentation_trajectory_set = np.load(os.path.join(base_dir, "Segmentation_Trajectory_Set.npy"), allow_pickle=True)
+
+	def split_z_set(self, query_z_set):
+		
+		# Splits up z sets into two streams.
+		# Assumes query_z_set is list of arrays. 
+		if isinstance(query_z_set, list):
+			z_set = np.concatenate(query_z_set)
+		else:
+			z_set = query_z_set
+		robot_z_set = z_set[:, :int(self.latent_z_dimensionality/2)]
+		env_z_set = z_set[:, int(self.latent_z_dimensionality/2):]
+
+		return z_set, robot_z_set, env_z_set
+
+	def create_kd_trees(self, query_z_set):
+
+		# Will create KD Tree from Z_J = {Z_R, Z_E}'s from Robot Dataset. 
+		self.stream_latent_z_dict = {}
+		self.stream_latent_z_dict['joint'], self.stream_latent_z_dict['robot'], self.stream_latent_z_dict['env'] = self.split_z_set(query_z_set)
+		
+		self.kdtree_dict = {}
+		self.kdtree_dict['robot'] = KDTree(self.stream_latent_z_dict['robot'])
+		self.kdtree_dict['env'] = KDTree(self.stream_latent_z_dict['env'])
+	
+	def query_kd_tree(self, stream=None, query_zs=None, number_neighbors=1):
+		
+		return self.kdtree_dict[stream].query(query_zs, number_neighbors)
+
+	def retrieve_nearest_neighbors(self, query_latent_zs):
+
+		# Assumes query_latent_zs is an array of {Z_J's = Z_R, Z_E}. 
+		human_joint_z_set, human_hand_z_set, human_env_z_set = self.split_z_set(query_latent_zs)
+
+		# Query Env KD Tree. 
+		_, nearest_env_z_indices = self.query_kd_tree(stream='env', query_zs=human_env_z_set)
+
+		# Get the Joint Zs. 
+		nearest_zs = self.stream_latent_z_dict['joint'][nearest_env_z_indices]
+
+		return nearest_zs	
+
+	def run_H2R_zeroshot_queries(self):
+
+		#################################
+		# 1) First Load Query Zs. 
+		#################################
+			
+		self.load_query_run_zs()
+
+		#################################
+		# 2) Retrieve NNs. 
+		#################################
+
+		print("About to create KD Trees")
+		self.create_kd_trees(self.latent_z_set)
+
+		#################################
+		# 3) Rollout Trajectories. 
+		#################################
+	
+		self.retrieved_rollout_robot_trajectories = []
+		self.retrieved_nearest_neighbour_zs = []
+
+		# For the number of query trajectories. 
+		for k in range(len(self.query_trajectory_set)):
+			
+			# For each trajectory, query the model for the nearest set of env zs, then retrieve corresponding robot zs. 
+			nearest_zs = self.retrieve_nearest_neighbors(self.query_latent_z_set[k])
+
+			rolled_out_robot_traj, _ = self.partitioned_rollout_robot_trajectory(trajectory_start=self.query_trajectory_set[k][0], latent_z=nearest_zs, segment_indices=self.query_segmentation_set[k])
+
+			self.retrieved_rollout_robot_trajectories.append(rolled_out_robot_traj)
+			self.retrieved_nearest_neighbour_zs.append(nearest_zs)
+
+		self.save_all_models()
+
+	def save_trajectories(self):
+	
+		base_dir = os.path.join(self.args.logdir, self.args.name)
+		if not(os.path.isdir(base_dir)):
+			os.mkdir(base_dir)
+
+		save_dir = os.path.join(base_dir, "SavedRolloutTrajectories")
+		if not(os.path.isdir(save_dir)):
+			os.mkdir(save_dir)
+
+		np.save(os.path.join(save_dir, "Z_Set.npy"), self.retrieved_nearest_neighbour_zs)	
+		np.save(os.path.join(save_dir, "Trajectory_Set.npy"), self.retrieved_rollout_robot_trajectories)	
 
 class PolicyManager_BaselineRL(PolicyManager_BaseClass):
 
