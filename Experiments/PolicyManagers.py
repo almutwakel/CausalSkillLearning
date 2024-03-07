@@ -2885,10 +2885,10 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		else:
 			return image
 
-	def plot_embedding(self, embedded_zs, title, shared=False, trajectory=False):
+	def plot_embedding(self, embedded_zs, title, shared=False, trajectory=False, return_axis=False):
 	
 		if (self.args.data in ['RealWorldRigidHumanNNTransferCompositional']) and (shared==False):
-			image = self.plot_embedding_for_H2RCompositionalTransfer(embedded_zs, title)
+			image = self.plot_embedding_for_H2RCompositionalTransfer(embedded_zs, title, return_axis=return_axis)
 		else: 
 
 			fig = plt.figure()
