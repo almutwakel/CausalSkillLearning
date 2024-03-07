@@ -2776,8 +2776,10 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			# Embedding different latent spaces..
 			###################################
 
-			# print("Embedding in latent z plots")
-			# embed()
+			print("###########################")
+			print("Embedding in latent z plots")
+			print("###########################")			
+			embed()
 
 			self.embedded_z_dict['perp30_zE'] = self.get_robot_embedding(perplexity=30, latent_z=self.latent_z_set[:,int(self.latent_z_dimensionality/2):])
 			self.embedded_z_dict['perp30_zR'] = self.get_robot_embedding(perplexity=30, latent_z=self.latent_z_set[:,:int(self.latent_z_dimensionality/2)])
@@ -2811,7 +2813,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 
 		wandb.log(log_dict, step=counter)
 
-	def plot_embedding_for_H2RCompositionalTransfer(self, embedded_zs, title):
+	def plot_embedding_for_H2RCompositionalTransfer(self, embedded_zs, title, return_axis=False):
 
 		# For each compositional task, use a different marker. 
 		# For each constituent individual task, one of the original 5 colors for each task for the skill. 
@@ -2878,7 +2880,10 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		image = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8).reshape(int(height), int(width), 3)
 		image = np.transpose(image, axes=[2,0,1])
 
-		return image
+		if return_axis:
+			return fig, ax
+		else:
+			return image
 
 	def plot_embedding(self, embedded_zs, title, shared=False, trajectory=False):
 	
