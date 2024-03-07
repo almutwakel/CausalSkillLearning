@@ -2845,7 +2845,8 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			individual_task_indices.append( self.dataset.individual_task_list.index( self.dataset.compositional_task_sets[ self.dataset.task_list[self.task_id_set[k]] ][index] ) )						
 
 		# Now for each compositional task, plot things with a particular marker. 
-		marker_list = ['o', 'D', 's']
+		# marker_list = ['o', 'D', 's']
+		marker_list = ['s', 'X', 'd']
 		max_task = 4 
 
 		for k, v in enumerate(self.dataset.task_list):			
