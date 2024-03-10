@@ -1398,7 +1398,12 @@ class PolicyManager_BaseClass():
 			# Create offset image (so that we can place it where we choose), with specific zoom. 
 
 			if gt:
-				imagebox = OffsetImage(self.gt_gif_list[i][0],zoom=zoom_factor)
+
+				print("Temporarily Cropping Image")
+				gt_image = self.gt_gif_list[i][0]
+				gt_image = gt_image[:300,200:]
+
+				imagebox = OffsetImage(gt_image,zoom=zoom_factor)
 			else:
 				imagebox = OffsetImage(self.rollout_gif_list[i][0],zoom=zoom_factor)			
 
@@ -2776,10 +2781,10 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			# Embedding different latent spaces..
 			###################################
 
-			print("###########################")
-			print("Embedding in latent z plots")
-			print("###########################")			
-			embed()
+			# print("###########################")
+			# print("Embedding in latent z plots")
+			# print("###########################")			
+			# embed()
 
 			self.embedded_z_dict['perp30_zE'] = self.get_robot_embedding(perplexity=30, latent_z=self.latent_z_set[:,int(self.latent_z_dimensionality/2):])
 			self.embedded_z_dict['perp30_zR'] = self.get_robot_embedding(perplexity=30, latent_z=self.latent_z_set[:,:int(self.latent_z_dimensionality/2)])
