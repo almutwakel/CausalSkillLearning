@@ -1734,7 +1734,6 @@ class FetchMOMARTVisualizer(FrankaKitchenVisualizer):
 			self.create_initial_environment()		
 
 
-
 	def set_joint_pose_return_image(self, pose, arm='both', gripper=False):
 
 		self.set_joint_pose(pose)
@@ -1814,11 +1813,10 @@ class DatasetImageVisualizer(object):
 				
 		imageio.mimsave(os.path.join(gif_path,gif_name), image_list[...,::-1])
 
-		print("Embed in viz")
-		embed()
-
-		
-		return image_list[...,::-1]
+		print("Temporarily using cropped image.")
+		return image_list[:, :300, 200:, ::-1]
+	
+		# return image_list[...,::-1]
 	
 class ToyDataVisualizer():
 
