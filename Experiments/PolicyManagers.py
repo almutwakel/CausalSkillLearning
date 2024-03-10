@@ -1398,10 +1398,9 @@ class PolicyManager_BaseClass():
 			# Create offset image (so that we can place it where we choose), with specific zoom. 
 
 			if gt:
-
-				print("Temporarily Cropping Image")
+				# print("Temporarily Cropping Image")
 				gt_image = self.gt_gif_list[i][0]
-				gt_image = gt_image[:300,200:]
+				# gt_image = gt_image[:300,200:]
 
 				imagebox = OffsetImage(gt_image,zoom=zoom_factor)
 			else:
