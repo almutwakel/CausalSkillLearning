@@ -1373,7 +1373,7 @@ class PolicyManager_BaseClass():
 
 		# less spaced out..
 		matplotlib.rcParams['figure.figsize'] = [20, 20]			
-		zoom_factor = 0.2
+		zoom_factor = 0.3
 
 		# Set this parameter to make sure we don't drop frames.
 		matplotlib.rcParams['animation.embed_limit'] = 2**128
