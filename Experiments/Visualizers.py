@@ -1813,9 +1813,12 @@ class DatasetImageVisualizer(object):
 				
 		imageio.mimsave(os.path.join(gif_path,gif_name), image_list[...,::-1])
 
-		print("Temporarily using cropped image.")
-		return image_list[:, :300, 200:-150, ::-1]
-	
+		# print("Temporarily using cropped image.")
+		# return image_list[:, :300, 200:-150, ::-1]
+
+		print("Temporarily using HUMAN cropped image.")
+		return image_list[:, :300, 100:-150, ::-1]
+
 		# return image_list[...,::-1]
 	
 class ToyDataVisualizer():
