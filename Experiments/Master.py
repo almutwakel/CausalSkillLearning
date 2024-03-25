@@ -9,7 +9,7 @@
 from headers import *
 import DataLoaders, MIME_DataLoader, Roboturk_DataLoader, Mocap_DataLoader, Robomimic_DataLoaders, \
 	  GRAB_DataLoader, DAPG_DataLoader, DexMV_DataLoader, MOMART_DataLoader, FrankaKitchen_DataLoader, \
-		RealWorldRigid_DataLoader, NDAX_DataLoader, RealWorldHumanRigid_DataLoader
+		RealWorldRigid_DataLoader, NDAX_DataLoader, RealWorldHumanRigid_DataLoader, AICExercise_DataLoader
 from PolicyManagers import *
 import TestClass
 import faulthandler
@@ -148,8 +148,11 @@ def return_dataset(args, data=None, create_dataset_variation=False):
 	elif args.data=='RealWorldRigidHumanPreproc':
 		dataset = RealWorldHumanRigid_DataLoader.RealWorldHumanRigid_PreDataset(args)
 	elif args.data in ['RealWorldRigidHuman', 'RealWorldRigidHumanNNTransfer', \
-					 'RealWorldRigidHumanNNTransferCompositional','RealWorldRigidHumanNNTransferFull']:
+					 'RealWorldRigidHumanNNTransferCompositional','RealWorldRigidHumanNNTransferFull']:					 
 		dataset = RealWorldHumanRigid_DataLoader.RealWorldHumanRigid_Dataset(args)
+	############################
+	elif args.data in ['AICaringExerciseV1']:
+		dataset = AICExercise_DataLoader.AICaringExerciseDatasetV1(args)		
 
 	return dataset
 	
@@ -165,7 +168,7 @@ class Master():
 		print("##########################")
 		print("Finished Dataset Creation.")		
 		print("##########################")
-		# embed()		
+		embed()		
 
 		# Now define policy manager.
 		if self.args.setting in ['learntsub', 'joint']:
