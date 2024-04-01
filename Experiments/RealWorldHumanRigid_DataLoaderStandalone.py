@@ -132,7 +132,7 @@ class RealWorldHumanRigid_PreDataset(object):
 		self.environment_names = ['Pouring', 'BoxOpening', 'DrawerOpening', 'Pouring+Stirring', 'DrawerOpening+PickPlace', 'BoxOpening+Pouring', 'PickPlace', 'Stirring']
 		# self.environment_names = [ 'Pouring', 'BoxOpening', 'DrawerOpening', 'PickPlace', 'Stirring']
 		# self.num_demos = np.array([5, 6, 6, 10, 10])
-		self.num_demos = np.array([5, 6, 6, 6, 6, 6, 10, 10])
+		self.num_demos = np.array([5, 6, 6, 6, 6, 6, 10, 10])		
 
 		# Each task has different number of demos according to our Human Dataset.
 		self.number_tasks = len(self.task_list)
@@ -142,7 +142,8 @@ class RealWorldHumanRigid_PreDataset(object):
 		self.total_length = self.num_demos.sum()		
 
 		# self.ds_freq = 1*np.ones(self.number_tasks).astype(int)
-		self.ds_freq = np.array([6, 6, 7, 7, 7, 8, 8, 8])
+		# self.ds_freq = np.array([6, 6, 7, 7, 7, 8, 8, 8])
+		self.ds_freq = np.array([4, 5, 6.5, 4, 6, 6, 5.5, 4])
 
 		# Set files. 
 		self.set_ground_tag_pose_dict()
@@ -152,8 +153,13 @@ class RealWorldHumanRigid_PreDataset(object):
 
 	def tag_preprocessing(self, cam_tag_detections=None, task_name=None):
 		
-		expected_tags = {'Pouring':[0,2,6], 'Stirring':[0,3,6], 'BoxOpening':[0,1,2], 'DrawerOpening':[0,1,2], 'PickPlace':[0,1,2], 
-					     'BoxOpening+Pouring':[0,1,2,6], 'DrawerOpening+PickPlace':[0,1,2,6], 'Pouring+Stirring':[0,2,3,6], 
+		# expected_tags = {'Pouring':[0,2,6], 'Stirring':[0,3,6], 'BoxOpening':[0,1,2], 'DrawerOpening':[0,1,2], 'PickPlace':[0,1,2], 
+		# 			     'BoxOpening+Pouring':[0,1,2,6], 'DrawerOpening+PickPlace':[0,1,2,6], 'Pouring+Stirring':[0,2,3,6], 
+		# 			     'BoxOpening+Pouring+Stirring':[0,1,2,3,6]}
+		
+		# Re ordered expected tags.
+		expected_tags = {'Pouring':[0,6,2], 'Stirring':[0,3,6], 'BoxOpening':[0,1,2], 'DrawerOpening':[0,1,2], 'PickPlace':[0,1,2], 
+					     'BoxOpening+Pouring':[0,6,1,2], 'DrawerOpening+PickPlace':[0,1,2,6], 'Pouring+Stirring':[0,6,3,2], 
 					     'BoxOpening+Pouring+Stirring':[0,1,2,3,6]}
 
 		# 0) If number of expected_tags is not 5, then add dummy tags (-1, -2, -3 ...)
@@ -873,12 +879,7 @@ class RealWorldHumanRigid_PreDataset(object):
 		self.fuse_keypoint_data(demonstration)
 
 		# Tag data fusion
-		print('#################')
-		print('Temporarily disabling tag fusion')
-		print('#################')
-
-		# self.fuse_tag_data(demonstration)
-
+		self.fuse_tag_data(demonstration)
 
 		#############
 		# 5) Interpolate keypoints, when they don't maintain normal distance between each other (ie normal distance between finger joints of a person)
@@ -1014,7 +1015,8 @@ class RealWorldHumanRigid_PreDataset(object):
 
 			#if self.args.images_in_real_world_dataset:
 			#	suffix = "_wSingleImages"
-			task_numpy_path = os.path.join(self.dataset_directory, self.task_list[task_index], "New_Task_Demo_Array{}_HDImages_NoTagFusion.npy".format(suffix))
+			# task_numpy_path = os.path.join(self.dataset_directory, self.task_list[task_index], "New_Task_Demo_Array{}_HDImages.npy".format(suffix))
+			task_numpy_path = os.path.join(self.dataset_directory, self.task_list[task_index], "New_Task_Demo_Array{}_HDImages_ReorderedObjects.npy".format(suffix))
 			np.save(task_numpy_path, self.task_demo_array)
 
 	def __len__(self):
@@ -1135,8 +1137,6 @@ class RealWorldHumanRigid_Dataset(RealWorldHumanRigid_PreDataset):
 			data_element['is_valid'] = False			
 		else:
 			data_element['is_valid'] = True
-
-
 			
 			if self.args.smoothen:
 				data_element['demo'] = gaussian_filter1d(data_element['demo'],self.kernel_bandwidth,axis=0,mode='nearest')

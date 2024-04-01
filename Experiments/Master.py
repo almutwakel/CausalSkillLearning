@@ -9,7 +9,7 @@
 from headers import *
 import DataLoaders, MIME_DataLoader, Roboturk_DataLoader, Mocap_DataLoader, Robomimic_DataLoaders, \
 	  GRAB_DataLoader, DAPG_DataLoader, DexMV_DataLoader, MOMART_DataLoader, FrankaKitchen_DataLoader, \
-		RealWorldRigid_DataLoader, NDAX_DataLoader, RealWorldHumanRigid_DataLoader
+		RealWorldRigid_DataLoader, NDAX_DataLoader, RealWorldHumanRigid_DataLoader, AICExercise_DataLoader
 from PolicyManagers import *
 import TestClass
 import faulthandler
@@ -147,8 +147,12 @@ def return_dataset(args, data=None, create_dataset_variation=False):
 	############################
 	elif args.data=='RealWorldRigidHumanPreproc':
 		dataset = RealWorldHumanRigid_DataLoader.RealWorldHumanRigid_PreDataset(args)
-	elif args.data in ['RealWorldRigidHuman', 'RealWorldRigidHumanNNTransfer']:
+	elif args.data in ['RealWorldRigidHuman', 'RealWorldRigidHumanNNTransfer', \
+					 'RealWorldRigidHumanNNTransferCompositional','RealWorldRigidHumanNNTransferFull']:					 
 		dataset = RealWorldHumanRigid_DataLoader.RealWorldHumanRigid_Dataset(args)
+	############################
+	elif args.data in ['AICaringExerciseV1']:
+		dataset = AICExercise_DataLoader.AICaringExerciseDatasetV1(args)		
 
 	return dataset
 	
@@ -315,6 +319,7 @@ def parse_arguments():
 	parser.add_argument('--setting',dest='setting',type=str,default='gtsub')
 	parser.add_argument('--test_code',dest='test_code',type=int,default=0)
 	parser.add_argument('--model',dest='model',type=str)
+	parser.add_argument('--query_run_name', dest='query_run_name', type=str, default=None, help='What run name to load query files from.')
 	parser.add_argument('--RL_model_path',dest='RL_model_path',type=str,help='High level policy model.')
 	# parser.add_argument('--logdir',dest='logdir',type=str,default='Experiment_Logs/')
 	parser.add_argument('--logdir',dest='logdir',type=str,default='ExpWandbLogs/')
@@ -324,19 +329,19 @@ def parse_arguments():
 	parser.add_argument('--replace_samples', dest='replace_samples',type=bool,default=False,help='Use replace=true when sampling trajectories for training.')
 
 	# Training setting. 
-	parser.add_argument('--discrete_z',dest='discrete_z',type=int,default=0)
-	# parser.add_argument('--transformer',dest='transformer',type=int,default=0)	
+	parser.add_argument('--discrete_z',dest='discrete_z',type=int,default=0)	
 	parser.add_argument('--z_dimensions',dest='z_dimensions',type=int,default=64)
 	parser.add_argument('--number_layers',dest='number_layers',type=int,default=5)
 	parser.add_argument('--hidden_size',dest='hidden_size',type=int,default=64)
 	parser.add_argument('--var_number_layers',dest='var_number_layers',type=int,default=5)
 	parser.add_argument('--var_hidden_size',dest='var_hidden_size',type=int,default=64)
+	parser.add_argument('--transformer_n_heads', dest='transformer_n_heads', type=int, default=8)
 	parser.add_argument('--dropout',dest='dropout',type=float,default=0.,help='Whether to set dropout.') 
 	parser.add_argument('--mlp_dropout',dest='mlp_dropout',type=float,default=0.,help='Whether to set dropout.') 
 	parser.add_argument('--batch_norm',dest='batch_norm',type=int,default=0,help='Whether to use batch norm.')
 	parser.add_argument('--leaky_relu',dest='leaky_relu',type=int,default=0,help='Whether to use leaky relu (or just vanilla relu).')
 	parser.add_argument('--environment',dest='environment',type=str,default='SawyerLift') # Defines robosuite environment for RL.
-	parser.add_argument('--target_environment',dest='target_environment',type=str,default='SawyerLift') # Defines robosuite environment for RL.
+	parser.add_argument('--target_environment',dest='target_environment',type=str,default='SawyerLift') # Defines robosuite environment for RL.	
 	
 	# Variance parameters. 
 	parser.add_argument('--variance_factor',dest='variance_factor',type=float,default=0.01,help='Factor by which to multiple variance value predicted by network.')
@@ -345,10 +350,9 @@ def parse_arguments():
 	parser.add_argument('--variance_value',dest='variance_value',type=float,default=0.1,help='Variance value for network distributions.')
 	parser.add_argument('--epsilon_scale_factor',dest='epsilon_scale_factor',type=float,default=100.,help='Factor by which to scale variance down for variance.')
 	# Setting parameters for linear annealing of variance.
-	parser.add_argument('--initial_policy_variance',dest='initial_policy_variance',type=float,default=0.1)
+	parser.add_argument('--initial_policy_variance',dest='initial_policy_variance',type=float,default=0.0001)
 	parser.add_argument('--final_policy_variance',dest='final_policy_variance',type=float,default=0.0001)
 	parser.add_argument('--policy_variance_decay_over',dest='policy_variance_decay_over',type=int,default=200)
-
 
 	# Data parameters. 
 	parser.add_argument('--traj_segments',dest='traj_segments',type=int,default=1) # Defines whether to use trajectory segments for pretraining or entire trajectories. Useful for baseline implementation.
@@ -437,7 +441,9 @@ def parse_arguments():
 	parser.add_argument('--kl_begin_increment_epochs',dest='kl_begin_increment_epochs',type=int,default=100,help='Number of epochs after which to increment KL.')
 	parser.add_argument('--kl_cyclic_phase_epochs',dest='kl_cyclic_phase_epochs',type=int,default=100,help='Number of epochs to cycle KL weight over.')	
 
-	# architecture
+	# architecture	
+	# parser.add_argument('--transformer_encoder',dest='transformer_encoder',type=int,default=0,help='Whether or not to use a transformer encoder instead of an LSTM.')	
+	parser.add_argument('--transformer',dest='transformer',type=str,default=None,choices=[None, 'encoder', 'full'],help='Whether or not to use a transformer encoder instead of an LSTM.')	
 	parser.add_argument('--split_stream_encoder',dest='split_stream_encoder',type=int,default=0,help='Whether to use split stream encoder or not.')
 	parser.add_argument('--embedding_visualization_stream',dest='embedding_visualization_stream',type=str,default=None,help='Which stream to use to embed and visualize Z space.')
 	parser.add_argument('--robot_state_size',dest='robot_state_size',type=int,default=8,help='Default robot state size.')
@@ -453,9 +459,15 @@ def parse_arguments():
 	parser.add_argument('--task_based_aux_loss_weight', dest='task_based_aux_loss_weight', type=float, default=0., help='Weight to place on task based auxillary loss.')	
 	parser.add_argument('--pairwise_z_distance_threshold', dest='pairwise_z_distance_threshold', type=float, default=2., help='Minimum distance to push apart different parts of latent space that are semantically different.')
 	
+	# Encoder jacobian regularizer. 
+	parser.add_argument('--jacobian_regularizer_loss_weight', dest='jacobian_regularizer_loss_weight', type=float, default=0., help='Weight to apply to jacobian regularizer weight.')
+
 	# Auxillary Z_env effect loss. 
-	parser.add_argument('--positive_z_distance_margin', dest='positive_z_distance_margin', type=float, default=0.1, help='Positive Component Distance Margin')
+	parser.add_argument('--positive_z_distance_margin', dest='positive_z_distance_margin', type=float, default=1., help='Positive Component Distance Margin')
 	parser.add_argument('--negative_z_distance_margin', dest='negative_z_distance_margin', type=float, default=5., help='Negative Component Distance Margin')
+	parser.add_argument('--task_positive_z_distance_margin', dest='task_positive_z_distance_margin', type=float, default=1., help='Positive Component Distance Margin For Task Loss')
+	parser.add_argument('--task_negative_z_distance_margin', dest='task_negative_z_distance_margin', type=float, default=5., help='Negative Component Distance Margin For Task Loss')
+
 	# Setting parameters for linear annealing of Distance Threshold for this Z_Env loss.
 	parser.add_argument('--initial_z_distance_threshold',dest='initial_z_distance_threshold',type=float,default=2.)
 	parser.add_argument('--final_z_distance_threshold',dest='final_z_distance_threshold',type=float,default=1.)	

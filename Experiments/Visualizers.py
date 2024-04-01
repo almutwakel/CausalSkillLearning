@@ -1736,7 +1736,6 @@ class FetchMOMARTVisualizer(FrankaKitchenVisualizer):
 			self.create_initial_environment()		
 
 
-
 	def set_joint_pose_return_image(self, pose, arm='both', gripper=False):
 
 		self.set_joint_pose(pose)
@@ -1815,7 +1814,14 @@ class DatasetImageVisualizer(object):
 	def visualize_prerendered_gif(self, image_list=None, gif_path=None, gif_name="Traj.gif"):
 				
 		imageio.mimsave(os.path.join(gif_path,gif_name), image_list[...,::-1])
-		return image_list[...,::-1]
+
+		# print("Temporarily using cropped image.")
+		# return image_list[:, :300, 200:-150, ::-1]
+
+		print("Temporarily using HUMAN cropped image.")
+		return image_list[:, :300, 100:-150, ::-1]
+
+		# return image_list[...,::-1]
 	
 class ToyDataVisualizer():
 

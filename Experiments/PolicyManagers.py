@@ -38,7 +38,7 @@ global_dataset_list = ['MIME','OldMIME','Roboturk','OrigRoboturk','FullRoboturk'
 			'MOMARTPreproc', 'MOMART', 'MOMARTObject', 'MOMARTRobotObject', 'MOMARTRobotObjectFlat', \
 			'FrankaKitchenPreproc', 'FrankaKitchen', 'FrankaKitchenObject', 'FrankaKitchenRobotObject', \
 			'RealWorldRigid', 'RealWorldRigidRobot', 'RealWorldRigidJEEF', 'RealWorldRigidJEEFAbsRelObj', \
-			'RealWorldRigidHuman', 'RealWorldRigidHumanNNTransfer', \
+			'RealWorldRigidHuman', 'RealWorldRigidHumanNNTransfer', 'RealWorldRigidHumanNNTransferCompositional', 'RealWorldRigidHumanNNTransferFull',\
 			'NDAX', 'NDAXMotorAngles', 'NDAXv2']
 
 class PolicyManager_BaseClass():
@@ -477,7 +477,8 @@ class PolicyManager_BaseClass():
 		# elif self.args.data in ['RealWorldRigid', 'NDAX', 'NDAXMotorAngles', 'NDAXv2']:
 		elif self.args.data in ['RealWorldRigid', 'NDAX', 'NDAXMotorAngles', 'NDAXv2', \
 						  'RealWorldRigidRobot', 'RealWorldRigidJEEF', 'RealWorldRigidJEEFAbsRelObj',\
-							'RealWorldRigidHuman', 'RealWorldRigidHumanNNTransfer']:
+							'RealWorldRigidHuman', 'RealWorldRigidHumanNNTransfer', \
+								'RealWorldRigidHumanNNTransferCompositional', 'RealWorldRigidHumanNNTransferFull']:
 			self.visualizer = DatasetImageVisualizer(args=self.args)
 		else: 
 			self.visualizer = ToyDataVisualizer()
@@ -601,12 +602,14 @@ class PolicyManager_BaseClass():
 				# (1) Encode trajectory. 
 				if self.args.setting in ['learntsub','joint', 'queryjoint']:
 					
-					
 					input_dict, var_dict = self.run_iteration(0, j, return_dicts=True, train=False)
 					latent_z = var_dict['latent_z_indices']
 					sample_trajs = input_dict['sample_traj']
 					data_element = input_dict['data_element']
-					latent_b = torch.swapaxes(var_dict['latent_b'], 1,0)
+
+					print("temporarily removing swap")
+					# latent_b = torch.swapaxes(var_dict['latent_b'], 1,0)					
+					latent_b = var_dict['latent_b']
 
 					# Generate segment index list..
 					self.generate_segment_indices(latent_b)
@@ -627,7 +630,7 @@ class PolicyManager_BaseClass():
 
 					#######################
 					# Create env for batch.
-					if not(self.args.data in ['RealWorldRigid', 'RealWorldRigidHuman', 'RealWorldRigidHumanNNTransfer', 'NDAX', 'NDAXMotorAngles','NDAXv2']):
+					if not(self.args.data in ['RealWorldRigid', 'RealWorldRigidHuman', 'RealWorldRigidHumanNNTransfer', 'RealWorldRigidHumanNNTransferCompositional', 'RealWorldRigidHumanNNTransferFull', 'NDAX', 'NDAXMotorAngles','NDAXv2']):
 						self.per_batch_env_management(data_element[0])
 
 					for b in range(self.args.batch_size):
@@ -693,8 +696,8 @@ class PolicyManager_BaseClass():
 						# np.save(os.path.join(self.traj_dir_name, "Rollout_Traj{0}.npy".format(k)), rollout_traj)
 						# np.save(os.path.join(self.z_dir_name, "Latent_Z{0}.npy".format(k)), self.latent_z_set[k])
 												
-						np.save(os.path.join(self.traj_dir_name, "Traj{0}_GT.npy".format(kstr)), gt_traj_tuple)
-						np.save(os.path.join(self.traj_dir_name, "Traj{0}_Rollout.npy".format(kstr)), rollout_traj_tuple)
+						np.save(os.path.join(self.traj_dir_name, "Traj{0}_GT.npy".format(kstr)), np.array(gt_traj_tuple, dtype=object))
+						np.save(os.path.join(self.traj_dir_name, "Traj{0}_Rollout.npy".format(kstr)), np.array(rollout_traj_tuple, dtype=object))
 						np.save(os.path.join(self.z_dir_name, "Traj{0}_Latent_Z.npy".format(kstr)), self.latent_z_set[k])						
 
 				else:
@@ -769,7 +772,7 @@ class PolicyManager_BaseClass():
 		self.write_results_HTML(plots_or_gif='Plot')
 		
 		viz_embeddings = True
-		if (self.args.data in ['RealWorldRigid', 'RealWorldRigidRobot', 'RealWorldRigidHuman','RealWorldRigidHumanNNTransfer','NDAXv2']) and (self.args.images_in_real_world_dataset==0):
+		if (self.args.data in ['RealWorldRigid', 'RealWorldRigidRobot', 'RealWorldRigidHuman','RealWorldRigidHumanNNTransfer', 'NDAXv2']) and (self.args.images_in_real_world_dataset==0):
 			viz_embeddings = False
 
 		if viz_embeddings:
@@ -1066,7 +1069,10 @@ class PolicyManager_BaseClass():
 			segment_length = segment_indices[k+1] - segment_indices[k]
 
 			# Technically the latent z should be constant across the segment., so just set it to start value. 
-			segment_latent_z = latent_z[segment_indices[k]]
+			if isinstance(self, PolicyManager_BatchJointQueryMode):
+				segment_latent_z = latent_z[k]
+			else:
+				segment_latent_z = latent_z[segment_indices[k]]
 
 			# Rollout. 
 			rollout_trajectory_segment, _ = self.rollout_robot_trajectory(start_state, segment_latent_z, rollout_length=segment_length)
@@ -1153,7 +1159,8 @@ class PolicyManager_BaseClass():
 		# For now
 		##############################
 
-		if self.args.data in ['RealWorldRigid', 'NDAXv2', 'RealWorldRigidHuman', 'RealWorldRigidHumanNNTransfer'] and self.args.images_in_real_world_dataset:
+		if self.args.data in ['RealWorldRigid', 'NDAXv2', 'RealWorldRigidHuman', 'RealWorldRigidHumanNNTransfer', \
+						'RealWorldRigidHumanNNTransferCompositional', 'RealWorldRigidHumanNNTransferFull'] and self.args.images_in_real_world_dataset:
 			# This should already be segmented to the right start and end point...		
 			self.ground_truth_gif = self.visualizer.visualize_prerendered_gif(indexed_data_element['subsampled_images'], gif_path=self.dir_name, gif_name="Traj_{0}_GIF_GT.gif".format(str(i).zfill(3)))
 		else:			
@@ -1366,7 +1373,7 @@ class PolicyManager_BaseClass():
 
 		# less spaced out..
 		matplotlib.rcParams['figure.figsize'] = [20, 20]			
-		zoom_factor = 0.2
+		zoom_factor = 0.3
 
 		# Set this parameter to make sure we don't drop frames.
 		matplotlib.rcParams['animation.embed_limit'] = 2**128
@@ -1391,7 +1398,11 @@ class PolicyManager_BaseClass():
 			# Create offset image (so that we can place it where we choose), with specific zoom. 
 
 			if gt:
-				imagebox = OffsetImage(self.gt_gif_list[i][0],zoom=zoom_factor)
+				# print("Temporarily Cropping Image")
+				gt_image = self.gt_gif_list[i][0]
+				# gt_image = gt_image[:300,200:]
+
+				imagebox = OffsetImage(gt_image,zoom=zoom_factor)
 			else:
 				imagebox = OffsetImage(self.rollout_gif_list[i][0],zoom=zoom_factor)			
 
@@ -1769,8 +1780,12 @@ class PolicyManager_BaseClass():
 	
 		realdata = (self.args.data in global_dataset_list)
 
+		# No shuffling for query mode. 
+		if isinstance(self, PolicyManager_BatchJointQueryMode):
+			self.sorted_indices = np.arange(0,len(self.dataset))
+
 		# Length based shuffling.
-		if isinstance(self, PolicyManager_BatchJoint) or isinstance(self, PolicyManager_IKTrainer):
+		elif isinstance(self, PolicyManager_BatchJoint) or isinstance(self, PolicyManager_IKTrainer):
 
 			print("##############################")
 			print("##############################")
@@ -1799,7 +1814,7 @@ class PolicyManager_BaseClass():
 		# Task based shuffling.
 		elif self.args.task_discriminability or self.args.task_based_supervision or self.args.task_based_shuffling:						
 			self.task_based_shuffling(extent=extent,shuffle=shuffle)							
-						
+
 		# Random shuffling.
 		else:
 
@@ -1808,6 +1823,7 @@ class PolicyManager_BaseClass():
 			################################
 			self.random_shuffle(extent)
 
+		
 class PolicyManager_Pretrain(PolicyManager_BaseClass):
 
 	def __init__(self, number_policies=4, dataset=None, args=None):
@@ -2345,7 +2361,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 					self.norm_denom_value[17:] = 1.   # second obj
 					self.norm_sub_value[10:14] = 0.
 					self.norm_sub_value[17:] = 0.
-
+			
 		elif self.args.data in ['RealWorldRigidJEEF']:
 
 			self.state_size = 28
@@ -2419,7 +2435,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		elif self.args.data in ['RealWorldRigidHuman']:
 
 			self.state_size = 53
-			self.state_dim = 53			
+			self.state_dim = 53				
 			# set the last few elements of data to be unnoramlized, they're empty for now.. 
 
 			# Hand orientation. 
@@ -2438,7 +2454,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			self.norm_denom_value[-14:] = 1.
 			self.norm_sub_value[-14:] = 0.
 
-		elif self.args.data in ['RealWorldRigidHumanNNTransfer']:
+		elif self.args.data in ['RealWorldRigidHumanNNTransfer', 'RealWorldRigidHumanNNTransferCompositional', 'RealWorldRigidHumanNNTransferFull']:
 
 			self.state_size = 21
 			self.state_dim = 21
@@ -2447,6 +2463,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			norm_indices = np.concatenate([ np.arange(0,3), np.arange(21,25), np.arange(25, 39)])
 			self.norm_sub_value = self.norm_sub_value[norm_indices]
 			self.norm_denom_value = self.norm_denom_value[norm_indices]
+			self.norm_denom_value /= self.args.state_scale_factor
 
 			# Hand orientation. 
 			self.norm_denom_value[21-18:25-18] = 1.
@@ -2458,7 +2475,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 
 			# Object 2 Orientation. 
 			self.norm_denom_value[35-18:39-18] = 1.
-			self.norm_sub_value[35-18:39-18] = 0. 
+			self.norm_sub_value[35-18:39-18] = 0. 		
 
 		self.input_size = 2*self.state_size
 		self.hidden_size = self.args.hidden_size
@@ -2636,8 +2653,8 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 				# If we are still in the initial phase of training, don't use the aux_zenv_loss_weight or the task based aux loss.
 				self.aux_env_effect_traj_loss_weight = 0.
 				self.aux_env_effect_z_loss_weight = 0.
-				self.aux_task_based_loss_weight = 0.				
-
+				# self.aux_task_based_loss_weight = 0.				
+				self.aux_task_based_loss_weight = self.args.task_based_aux_loss_weight
 		# Cyclic KL.
 		elif self.args.kl_schedule=='Cyclic':
 
@@ -2688,7 +2705,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 
 		return image
 
-	def update_plots(self, counter, loglikelihood, sample_traj, stat_dictionary):
+	def update_plots(self, counter, loglikelihood, sample_traj, stat_dictionary, input_dict=None):
 		
 		# log_dict['Subpolicy Loglikelihood'] = loglikelihood.mean()
 		log_dict = {'Subpolicy Loglikelihood': loglikelihood.mean(), 'Total Loss': self.total_loss.mean(), 'Encoder KL': self.encoder_KL.mean(), 'KL Weight': self.kl_weight}
@@ -2733,6 +2750,10 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			log_dict['Auxillary Env Effect Traj Loss'] = self.auxillary_env_effect_traj_loss
 			log_dict['Env Effect Traj Distance Threshold'] = self.auxillary_z_env_effect_distance_threshold
 
+		if self.args.jacobian_regularizer_loss_weight>0.:
+			log_dict['Unweighted Jacobian Regularizer Loss'] = self.unweighted_auxillary_jacobian_regularizer_loss
+			log_dict['Jacobian Regularizer Loss'] = self.auxillary_jacobian_regularizer_loss 
+
 		if counter%self.args.display_freq==0:
 			
 			if self.args.batch_size>1:
@@ -2759,7 +2780,9 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			# Embedding different latent spaces..
 			###################################
 
+			# print("###########################")
 			# print("Embedding in latent z plots")
+			# print("###########################")			
 			# embed()
 
 			self.embedded_z_dict['perp30_zE'] = self.get_robot_embedding(perplexity=30, latent_z=self.latent_z_set[:,int(self.latent_z_dimensionality/2):])
@@ -2794,47 +2817,66 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 
 		wandb.log(log_dict, step=counter)
 
-	def plot_embedding(self, embedded_zs, title, shared=False, trajectory=False):
-	
+	def plot_embedding_for_H2RCompositionalTransfer(self, embedded_zs, title, return_axis=False):
+
+		# For each compositional task, use a different marker. 
+		# For each constituent individual task, one of the original 5 colors for each task for the skill. 
+		
+		# Create 3 lists for each compositional task, which stores indices of embedded_zs that are of that task.
+		per_compositional_task_indices = {}
+		individual_task_indices = []
+
+		for k, v in enumerate(self.dataset.task_list):
+			per_compositional_task_indices[v] = []
+		
+		# print("Embed in plot for composiitonal thingies. ")
+		# embed()
+				
 		fig = plt.figure()
-		ax = fig.gca()
-		
-		if shared:
-			colors = 0.2*np.ones((2*self.N))
-			colors[self.N:] = 0.92
-		else:
-			# colors = 0.2*np.ones((self.N))
+		ax = fig.gca()				
 
-			# For now, plot colors using task ID. 
-			max_task = max(self.task_id_set)
-			colors = 0.1 + (0.75*(self.task_id_set/max_task))
-
-		if trajectory:
-			# Create a scatter plot of the embedding.
-
-			self.source_manager.get_trajectory_and_latent_sets()
-			self.target_manager.get_trajectory_and_latent_sets()
-
-			ratio = 0.4
-			color_scaling = 15
-
-			# Assemble shared trajectory set. 
-			traj_length = len(self.source_manager.trajectory_set[0,:,0])
-			self.shared_trajectory_set = np.zeros((2*self.N, traj_length, 2))
+		for k in range(len(embedded_zs)):
 			
-			self.shared_trajectory_set[:self.N] = self.source_manager.trajectory_set
-			self.shared_trajectory_set[self.N:] = self.target_manager.trajectory_set
+			# For all embedded z's, add index of this z to the appropriate composiitonal task index list.
+			per_compositional_task_indices[self.dataset.task_list[self.task_id_set[k]]].append(k)
 			
-			color_range_min = 0.2*color_scaling
-			color_range_max = 0.8*color_scaling+traj_length-1
+			# For all embedded z's, get which individual task this segment came from. 		
+			# The logic here is that if starting segment index < split index - 7, use the first index. Otherwise use the second index. 
+			# index = 1-int(self.segment_indices_set[k] <= (self.task_split_indices_set[k]-7))
+			index = int(self.segment_indices_set[k] > (self.task_split_indices_set[k]-7))
 
-			for i in range(2*self.N):
-				ax.scatter(embedded_zs[i,0]+ratio*self.shared_trajectory_set[i,:,0],embedded_zs[i,1]+ratio*self.shared_trajectory_set[i,:,1],c=colors[i]*color_scaling+range(traj_length),cmap='jet',vmin=color_range_min,vmax=color_range_max,edgecolors='black')
+			# First get what compositional task this is. Then get the name of which individual task it is. 								
+			individual_task_indices.append( self.dataset.individual_task_list.index( self.dataset.compositional_task_sets[ self.dataset.task_list[self.task_id_set[k]] ][index] ) )						
 
-		else:
-			# Create a scatter plot of the embedding.
-			ax.scatter(embedded_zs[:,0],embedded_zs[:,1],c=colors,vmin=0,vmax=1,cmap='jet',edgecolors='black')
-		
+		# Now for each compositional task, plot things with a particular marker. 
+		# marker_list = ['o', 'D', 's']
+		marker_list = ['s', 'X', 'd']
+		max_task = 4 
+
+		for k, v in enumerate(self.dataset.task_list):			
+
+			individual_task_indices_array = np.array(individual_task_indices)[np.array(per_compositional_task_indices[v])]
+			colors = 0.1 + (0.75*(individual_task_indices_array/max_task))
+
+			xs = embedded_zs[np.array(per_compositional_task_indices[v]),0]
+			ys = embedded_zs[np.array(per_compositional_task_indices[v]),1]
+
+			# ##############################
+			# # PLOT OPTION 1 - markers 
+			# ##############################		
+			ax.scatter(xs, ys, c=colors, marker=marker_list[k], vmin=0, vmax=1, s=100, cmap='jet', edgecolors='black')			
+			
+			# ##############################
+			# # # PLOT OPTION 2 - no markers, just bigger plots and colors
+			# ##############################
+
+			# # First plot with compositional task colors with bigger sizes. 
+			# new_colors = 0.1 + 0.75*(k/2)*np.ones_like(colors)
+			# ax.scatter(xs, ys, c=new_colors, vmin=0, vmax=1, marker=marker_list[k], s=200, cmap='jet', edgecolors='black')
+
+			# # Then plot with task colors.
+			# ax.scatter(xs, ys, c=colors, vmin=0, vmax=1, cmap='jet', edgecolors='black')
+
 		# Title. 
 		ax.set_title("{0}".format(title),fontdict={'fontsize':15})
 		fig.canvas.draw()
@@ -2842,6 +2884,63 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		width, height = fig.get_size_inches() * fig.get_dpi()
 		image = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8).reshape(int(height), int(width), 3)
 		image = np.transpose(image, axes=[2,0,1])
+
+		if return_axis:
+			return fig, ax
+		else:
+			return image
+
+	def plot_embedding(self, embedded_zs, title, shared=False, trajectory=False, return_axis=False):
+	
+		if (self.args.data in ['RealWorldRigidHumanNNTransferCompositional']) and (shared==False):
+			image = self.plot_embedding_for_H2RCompositionalTransfer(embedded_zs, title, return_axis=return_axis)
+		else: 
+
+			fig = plt.figure()
+			ax = fig.gca()
+			if shared:
+				colors = 0.2*np.ones((2*self.N))
+				colors[self.N:] = 0.92
+			else:
+				# colors = 0.2*np.ones((self.N))
+				# colors = self.get_embedding_coloring()
+
+				max_task = max(self.task_id_set)
+				colors = 0.1 + (0.75*(self.task_id_set/max_task))
+
+			if trajectory:
+				# Create a scatter plot of the embedding.
+
+				self.source_manager.get_trajectory_and_latent_sets()
+				self.target_manager.get_trajectory_and_latent_sets()
+
+				ratio = 0.4
+				color_scaling = 15
+
+				# Assemble shared trajectory set. 
+				traj_length = len(self.source_manager.trajectory_set[0,:,0])
+				self.shared_trajectory_set = np.zeros((2*self.N, traj_length, 2))
+				
+				self.shared_trajectory_set[:self.N] = self.source_manager.trajectory_set
+				self.shared_trajectory_set[self.N:] = self.target_manager.trajectory_set
+				
+				color_range_min = 0.2*color_scaling
+				color_range_max = 0.8*color_scaling+traj_length-1
+
+				for i in range(2*self.N):
+					ax.scatter(embedded_zs[i,0]+ratio*self.shared_trajectory_set[i,:,0],embedded_zs[i,1]+ratio*self.shared_trajectory_set[i,:,1],c=colors[i]*color_scaling+range(traj_length),cmap='jet',vmin=color_range_min,vmax=color_range_max,edgecolors='black')
+
+			else:
+				# Create a scatter plot of the embedding.
+				ax.scatter(embedded_zs[:,0],embedded_zs[:,1],c=colors,vmin=0,vmax=1,cmap='jet',edgecolors='black')
+			
+			# Title. 
+			ax.set_title("{0}".format(title),fontdict={'fontsize':15})
+			fig.canvas.draw()
+			# Grab image.
+			width, height = fig.get_size_inches() * fig.get_dpi()
+			image = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8).reshape(int(height), int(width), 3)
+			image = np.transpose(image, axes=[2,0,1])
 
 		return image
 
@@ -2860,7 +2959,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			os.mkdir(self.dir_name)
 
 		np.save(os.path.join(self.dir_name, "LatentSet.npy") , self.latent_z_set)
-		np.save(os.path.join(self.dir_name, "GT_TrajSet.npy") , self.gt_trajectory_set)
+		np.save(os.path.join(self.dir_name, "GT_TrajSet.npy") , np.array(self.gt_trajectory_set, dtype=object))
 		np.save(os.path.join(self.dir_name, "EmbeddedZSet.npy") , self.embedded_z_dict)
 		np.save(os.path.join(self.dir_name, "TaskIDSet.npy"), self.task_id_set)
 
@@ -3091,6 +3190,10 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		self.unweighted_auxillary_env_effect_traj_loss = 0.
 		self.auxillary_env_effect_traj_loss = 0.
 
+		# 
+		self.unweighted_auxillary_jacobian_regularizer_loss = 0.
+		self.auxillary_jacobian_regularizer_loss = 0.
+
 	def compute_auxillary_losses(self, update_dict):
 
 		self.initialize_aux_losses()
@@ -3127,10 +3230,20 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		if self.args.cummulative_computed_state_reconstruction_loss_weight>0. or self.args.teacher_forced_state_reconstruction_loss_weight>0.:
 			self.compute_absolute_state_reconstruction_loss()
 
+		# Jacobian regularizer. 
+		if self.args.jacobian_regularizer_loss_weight>0.:
+			self.compute_jacobian_regularizer_loss(update_dict)
+
 		# Weighting the auxillary loss...
 		self.aux_loss = self.relative_state_reconstruction_loss + self.relative_state_phase_aux_loss \
 			  + self.task_based_aux_loss + self.absolute_state_reconstruction_loss + self.auxillary_z_env_effect_z_loss \
-				+ self.auxillary_env_effect_traj_loss
+				+ self.auxillary_env_effect_traj_loss + self.auxillary_jacobian_regularizer_loss
+
+	def compute_jacobian_regularizer_loss(self, update_dict):
+		
+		self.jacobian_regularizer = jacobian.JacobianReg()
+		self.unweighted_auxillary_jacobian_regularizer_loss = self.jacobian_regularizer(update_dict['input_torch_trajectory'], update_dict['latent_z'][0])
+		self.auxillary_jacobian_regularizer_loss = self.args.jacobian_regularizer_loss_weight*self.unweighted_auxillary_jacobian_regularizer_loss
 
 	def compute_relative_state_class_vectors(self, update_dict):
 
@@ -3246,8 +3359,8 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			# Now compute distances of this across the batch. 
 			z_distances = torch.cdist(relative_zR_zE_vector, relative_zR_zE_vector)
 
-		unmasked_task_based_aux_loss_positive_component = torch.clamp(z_distances, min=self.args.positive_z_distance_margin)
-		unmasked_task_based_aux_loss_negative_component = torch.clamp(self.args.negative_z_distance_margin - z_distances, min=0.)
+		unmasked_task_based_aux_loss_positive_component = torch.clamp(z_distances, min=self.args.task_positive_z_distance_margin)
+		unmasked_task_based_aux_loss_negative_component = torch.clamp(self.args.task_negative_z_distance_margin - z_distances, min=0.)
 
 		self.masked_task_based_aux_loss_positive_component = (positive_triangularized_mask*unmasked_task_based_aux_loss_positive_component).mean()
 		self.masked_task_based_aux_loss_negative_component = (negative_triangularized_mask*unmasked_task_based_aux_loss_negative_component).mean()
@@ -3348,7 +3461,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		# Select the position of the first object for the trajectory based loss. 
 		##############################
 
-		object_torch_traj = torch.from_numpy(update_dict['sample_traj'][..., self.args.robot_state_size:self.args.robot_state_size+3]).cuda()
+		object_torch_traj = torch.from_numpy(update_dict['sample_traj'][..., self.args.robot_state_size:self.args.robot_state_size+3]).to(device)
 		
 		# Normalize trajectory w.r.t. initial state. 
 		normalized_object_torch_traj = object_torch_traj - object_torch_traj[0]
@@ -3520,11 +3633,10 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		self.encoder_KL = encoder_KL.mean()
 
 		self.compute_auxillary_losses(update_dict)
-		# Adding a penalty for link lengths. 
-		# self.link_length_loss = ... 
-
 		self.total_loss = (self.likelihood_loss + self.kl_weight*self.encoder_KL + self.aux_loss) 
-		# + self.link_length_loss) 
+	
+		# print("Embedding in Update subpolicies.")
+		# embed()
 
 		if self.args.debug:
 			print("Embedding in Update subpolicies.")
@@ -3666,6 +3778,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			####################################
 
 			torch_traj_seg = torch.tensor(state_action_trajectory).to(device).float()
+			torch_traj_seg.requires_grad = True
 			# Encode trajectory segment into latent z. 		
 						
 			latent_z, encoder_loglikelihood, encoder_entropy, kl_divergence = self.encoder_network.forward(torch_traj_seg, self.epsilon, positional_encoding_offsets=self.batch_segment_indices)
@@ -3673,10 +3786,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 			
 			####################################
 			########## (2) & (3) ##########
-			####################################
-
-			# print("Embed in rut iter")
-			# embed()
+			####################################		
 
 			# Feed latent z and trajectory segment into policy network and evaluate likelihood. 
 			latent_z_seq, latent_b = self.construct_dummy_latents(latent_z)
@@ -3705,8 +3815,9 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 				####################################
 				
 				update_dict = input_dict
-				update_dict['latent_z'] = latent_z				
-
+				update_dict['latent_z'] = latent_z			
+				update_dict['input_torch_trajectory'] = torch_traj_seg
+				
 				self.update_policies_reparam(loglikelihood, kl_divergence, update_dict=update_dict)
 
 				####################################
@@ -3718,7 +3829,7 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 				stats['i'] = i
 				stats['epoch'] = self.current_epoch_running
 				stats['batch_size'] = self.args.batch_size			
-				self.update_plots(counter, loglikelihood, state_action_trajectory, stats)
+				self.update_plots(counter, loglikelihood, state_action_trajectory, stats, input_dict=input_dict)
 
 				####################################
 				# (5) Return.
@@ -3888,6 +3999,8 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 		self.gt_trajectory_set = []
 		# Save TASK IDs 
 		self.task_id_set = []
+		self.segment_indices_set = []
+		self.task_split_indices_set = []
 
 		# Use the dataset to get reasonable trajectories (because without the information bottleneck / KL between N(0,1), cannot just randomly sample.)
 
@@ -3920,9 +4033,12 @@ class PolicyManager_Pretrain(PolicyManager_BaseClass):
 
 				self.latent_z_set[i*self.args.batch_size+b] = copy.deepcopy(latent_z[0,b].detach().cpu().numpy())
 				# self.latent_z_set[i+b] = copy.deepcopy(latent_z[0,b].detach().cpu().numpy())
-				self.gt_trajectory_set.append(copy.deepcopy(sample_trajs[:,b]))
-				
-				self.task_id_set.append(data_element[b]['task-id'])
+				self.gt_trajectory_set.append(copy.deepcopy(sample_trajs[:,b]))				
+				self.task_id_set.append(data_element[b]['task-id'])		
+
+				if self.args.data in ['RealWorldRigidHumanNNTransferCompositional']:
+					self.segment_indices_set.append(self.batch_segment_indices[b])
+					self.task_split_indices_set.append(data_element[b]['task_split_index'])
 
 				if get_visuals:
 					# (2) Now rollout policy.	
@@ -4380,6 +4496,7 @@ class PolicyManager_BatchPretrain(PolicyManager_Pretrain):
 
 			return concatenated_traj.transpose((1,0,2)), sample_action_seq.transpose((1,0,2)), sample_traj.transpose((1,0,2))
 				
+
 		elif self.args.data in global_dataset_list:
 
 			if self.args.data in ['MIME','OldMIME'] or self.args.data=='Mocap':
@@ -4392,6 +4509,12 @@ class PolicyManager_BatchPretrain(PolicyManager_Pretrain):
 			if self.args.var_skill_length:
 				# Choose length of 12-16 with certain probabilities. 
 				self.current_traj_len = np.random.choice([12,13,14,15,16],p=[0.1,0.2,0.4,0.2,0.1])
+
+				# Switching to more varied trajectory length to make representations more invariant to sampling frequency. 
+				# low_value = 8
+				# high_value = 25
+				# self.current_traj_len = np.random.randint(low_value, high_value)
+
 			else:
 				self.current_traj_len = self.traj_length            
 			
@@ -4449,7 +4572,8 @@ class PolicyManager_BatchPretrain(PolicyManager_Pretrain):
 						else:
 							batch_trajectory[x] = data_element['demo'][start_timepoint:end_timepoint,:-1]
 
-					if self.args.data in ['RealWorldRigid', 'RealWorldRigidJEEF', 'RealWorldRigidJEEFAbsRelObj', 'NDAXv2', 'RealWorldRigidHuman', 'RealWorldRigidHumanNNTransfer'] and self.args.images_in_real_world_dataset:
+					if self.args.data in ['RealWorldRigid', 'RealWorldRigidJEEF', 'RealWorldRigidJEEFAbsRelObj', 'NDAXv2', 'RealWorldRigidHuman', \
+						    'RealWorldRigidHumanNNTransfer', 'RealWorldRigidHumanNNTransferCompositional', 'RealWorldRigidHumanNNTransferFull'] and self.args.images_in_real_world_dataset:
 
 						# Truncate the images to start and end timepoint. 
 						data_element[x]['subsampled_images'] = data_element[x]['images'][start_timepoint:end_timepoint]
@@ -4836,6 +4960,15 @@ class PolicyManager_Joint(PolicyManager_BaseClass):
 		self.conditional_info_size = 6
 		self.test_set_size = 50
 
+		stat_dir_name = self.dataset.stat_dir_name
+		if self.args.normalization=='meanvar':
+			self.norm_sub_value = np.load("Statistics/{0}/{0}_Mean.npy".format(stat_dir_name))
+			self.norm_denom_value = np.load("Statistics/{0}/{0}_Var.npy".format(stat_dir_name))
+		elif self.args.normalization=='minmax':
+			self.norm_sub_value = np.load("Statistics/{0}/{0}_Min.npy".format(stat_dir_name))
+			self.norm_denom_value = np.load("Statistics/{0}/{0}_Max.npy".format(stat_dir_name)) - self.norm_sub_value
+
+
 		if self.args.data in ['ContinuousNonZero','DirContNonZero','ToyContext']:
 			self.conditional_info_size = self.args.condition_size
 			self.conditional_viz_env = False
@@ -4898,7 +5031,6 @@ class PolicyManager_Joint(PolicyManager_BaseClass):
 			self.number_tasks = 8
 			self.conditional_info_size = self.cond_robot_state_size+self.cond_object_state_size+self.number_tasks
 			
-
 		elif self.args.data=='Mocap':
 			self.state_size = 22*3
 			self.state_dim = 22*3	
@@ -5212,7 +5344,6 @@ class PolicyManager_Joint(PolicyManager_BaseClass):
 			self.norm_sub_value = self.norm_sub_value[:self.state_dim]
 			self.norm_denom_value = self.norm_denom_value[:self.state_dim]
 			
-
 		elif self.args.data=='RoboturkObjects':
 			# self.state_size = 14
 			# self.state_dim = 14
@@ -5274,6 +5405,36 @@ class PolicyManager_Joint(PolicyManager_BaseClass):
 			self.traj_length = self.args.traj_length
 			self.conditional_info_size = 0
 			self.test_set_size = 0
+
+		elif self.args.data in ['RealWorldRigidHumanNNTransfer', 'RealWorldRigidHumanNNTransferCompositional', 'RealWorldRigidHumanNNTransferFull']:
+
+			self.state_size = 21
+			self.state_dim = 21
+			self.input_size = 2*self.state_size
+
+			# We deleted 18 dims from hand state
+			norm_indices = np.concatenate([ np.arange(0,3), np.arange(21,25), np.arange(25, 39)])
+			self.norm_sub_value = self.norm_sub_value[norm_indices]
+			self.norm_denom_value = self.norm_denom_value[norm_indices]
+			self.norm_denom_value /= self.args.state_scale_factor
+
+			self.hidden_size = self.args.hidden_size
+			self.output_size = self.state_size
+			self.traj_length = self.args.traj_length
+			self.conditional_info_size = 0
+			self.test_set_size = 0
+
+			# Hand orientation. 
+			self.norm_denom_value[21-18:25-18] = 1.
+			self.norm_sub_value[21-18:25-18] = 0. 
+
+			# Object 1 Orientation:
+			self.norm_denom_value[28-18:32-18] = 1.
+			self.norm_sub_value[28-18:32-18] = 0. 
+
+			# Object 2 Orientation. 
+			self.norm_denom_value[35-18:39-18] = 1.
+			self.norm_sub_value[35-18:39-18] = 0. 		
 
 		self.training_phase_size = self.args.training_phase_size
 		self.number_epochs = self.args.epochs
@@ -6458,28 +6619,41 @@ class PolicyManager_Joint(PolicyManager_BaseClass):
 			# Run Joint Eval.
 			########################################
 
-			self.visualize_robot_data()
+			# Moving this up.
 
-			if self.args.data in ['RealWorldRigid']:
-				print("Entering Query Mode")
-				embed()
+			if self.args.data in ['RealWorldRigid', 'RealWorldRigidHumanNNTransfer', 'RealWorldRigidHumanNNTransferCompositional', 'RealWorldRigidHumanNNTransferFull']:
+
+				# self.retrieve_cross_domain_zs()
+				self.create_store_same_domain_zs()
+				if self.args.query_run_name is not None:
+					self.run_H2R_zeroshot_queries()
+					print("Entering Query Mode")
+					embed()						
+
+				else:
+					self.visualize_robot_data()
+
 				return 
-			
+		
+
 			########################################
 			# Run Pretrain Eval.
 			########################################
 
-			
-			arg_copy = copy.deepcopy(self.args)
-			arg_copy.name += "_Eval_Pretrain"
-			if self.args.batch_size>1:
-				self.pretrain_policy_manager = PolicyManager_BatchPretrain(self.args.number_policies, self.dataset, arg_copy)
-			else:
-				self.pretrain_policy_manager = PolicyManager_Pretrain(self.args.number_policies, self.dataset, arg_copy)
+			else:			
+				
+				self.visualize_robot_data()
 
-			self.pretrain_policy_manager.setup()
-			self.pretrain_policy_manager.load_all_models(model, only_policy=True)			
-			self.pretrain_policy_manager.visualize_robot_data()			
+				arg_copy = copy.deepcopy(self.args)
+				arg_copy.name += "_Eval_Pretrain"
+				if self.args.batch_size>1:
+					self.pretrain_policy_manager = PolicyManager_BatchPretrain(self.args.number_policies, self.dataset, arg_copy)
+				else:
+					self.pretrain_policy_manager = PolicyManager_Pretrain(self.args.number_policies, self.dataset, arg_copy)
+
+				self.pretrain_policy_manager.setup()
+				self.pretrain_policy_manager.load_all_models(model, only_policy=True)			
+				self.pretrain_policy_manager.visualize_robot_data()			
 
 		elif self.args.data in ['ContinuousNonZero','DirContNonZero','ToyContext']:
 			print("Running visualization of embedding space.")
@@ -6556,7 +6730,10 @@ class PolicyManager_Joint(PolicyManager_BaseClass):
 
 			# (1) Encoder trajectory. 
 			with torch.no_grad():
-				input_dict, variational_dict, _ = self.run_iteration(0, i, return_dicts=True, train=False)
+				print("Assuming RWR / RWH2R")
+				input_dict, variational_dict = self.run_iteration(0, i, return_dicts=True, train=False)
+
+				# input_dict, variational_dict, _ = self.run_iteration(0, i, return_dicts=True, train=False)
 
 			# Getting latent_b_set and full z traj.
 			# Don't unbatch them yet.
@@ -6578,13 +6755,12 @@ class PolicyManager_Joint(PolicyManager_BaseClass):
 				# Get distinct z's.
 				distinct_zs = variational_dict['latent_z_indices'][distinct_z_indices, b].clone().detach().cpu().numpy()
 
+				# print("Embedding in getting sets")
+				# embed()
+
 				if self.args.z_tuple_gmm:
 					self.number_distinct_zs.append(len(distinct_z_indices))
 				
-
-				# print("Embedding in Traj Setting Business")
-				# embed()
-
 				# Copy over these into lists.
 				self.latent_z_set.append(copy.deepcopy(distinct_zs))
 				self.trajectory_set.append(copy.deepcopy(input_dict['sample_traj'][:,b]))
@@ -7101,14 +7277,14 @@ class PolicyManager_BatchJoint(PolicyManager_Joint):
 			else:
 				self.variational_policy = ContinuousContextualVariationalPolicyNetwork(self.input_size, self.args.var_hidden_size, self.latent_z_dimensionality, self.args, number_layers=self.args.var_number_layers).to(device)
 		else:
-			if self.args.data in ['RealWorldRigid'] or self.args.split_stream_encoder==1:
+			if self.args.data in ['RealWorldRigid','RealWorldRigidHumanNNTransfer', 'RealWorldRigidHumanNNTransferCompositional', 'RealWorldRigidHumanNNTransferFull'] or self.args.split_stream_encoder==1:
+				
 				print("Making a Factored Segmenter Network.")
 				self.variational_policy = ContinuousSequentialFactoredEncoderNetwork(self.input_size, self.args.var_hidden_size, int(self.latent_z_dimensionality/2), self.args).to(device)
 				# self.variational_policy = ContinuousEncoderNetwork(self.input_size, self.args.var_hidden_size, self.latent_z_dimensionality, self.args).to(device)
 			else:
 				self.variational_policy = ContinuousVariationalPolicyNetwork_Batch(self.input_size, self.args.var_hidden_size, self.latent_z_dimensionality, self.args, number_layers=self.args.var_number_layers).to(device)
 		
-	# Batch concatenation functions. 
 	def concat_state_action(self, sample_traj, sample_action_seq):
 		# Add blank to start of action sequence and then concatenate. 
 		sample_action_seq = np.concatenate([np.zeros((self.args.batch_size,1,self.output_size)),sample_action_seq],axis=1)
@@ -7141,7 +7317,6 @@ class PolicyManager_BatchJoint(PolicyManager_Joint):
 			# self.batch_mask[b, :self.batch_trajectory_lengths[b]] = 1.
 			self.batch_mask[:self.batch_trajectory_lengths[b], b] = 1.
 
-	# Get batch full trajectory. 
 	def collect_inputs(self, i, get_latents=False, special_indices=None, called_from_train=False, bucket_index=None):
 
 		# print("# Debug task ID batching")
@@ -7451,7 +7626,193 @@ class PolicyManager_BatchJointQueryMode(PolicyManager_BatchJoint):
 				embed()		
 
 		if return_dicts:
-			return input_dictionary, variational_dict, None
+
+			if train and self.args.train:
+				return input_dictionary, variational_dict, None
+			else:
+				return input_dictionary, variational_dict
+	
+	def create_store_same_domain_zs(self):
+
+		print("Gettig Z Sets.")		
+		self.get_latent_trajectory_segmentation_sets(N=len(self.dataset))
+
+		print("Saving Z Sets.")
+		
+		base_dir = os.path.join(self.args.logdir, self.args.name)
+		if not(os.path.isdir(base_dir)):
+			os.mkdir(base_dir)
+
+		save_dir = os.path.join(base_dir, "SavedQueryInfo")
+		if not(os.path.isdir(save_dir)):
+			os.mkdir(save_dir)
+
+		np.save(os.path.join(save_dir, "Z_Set.npy"), self.latent_z_set)	
+		np.save(os.path.join(save_dir, "Trajectory_Set.npy"), self.trajectory_set)	
+		np.save(os.path.join(save_dir, "Segmentation_Set.npy"), self.segmentation_set)
+		# np.save(os.path.join(save_dir, "Segmentation_Trajectory_Set.npy"), self.segmented_trajectory_set)
+		np.save(os.path.join(save_dir, "Segmentation_Trajectory_Set.npy"), np.array(self.segmented_trajectory_set, dtype=object))
+
+	def load_query_run_zs(self):
+
+		print("Loading Human Dataset Query Zs etc.")
+		
+		base_dir = os.path.join(self.args.logdir, self.args.query_run_name, "SavedQueryInfo")
+		self.query_latent_z_set = np.load(os.path.join(base_dir, "Z_Set.npy"), allow_pickle=True)
+		self.query_trajectory_set = np.load(os.path.join(base_dir, "Trajectory_Set.npy"), allow_pickle=True)
+		self.query_segmentation_set = np.load(os.path.join(base_dir, "Segmentation_Set.npy"), allow_pickle=True)
+		self.query_segmentation_trajectory_set = np.load(os.path.join(base_dir, "Segmentation_Trajectory_Set.npy"), allow_pickle=True)
+
+	def split_z_set(self, query_z_set):
+		
+		# Splits up z sets into two streams.
+		# Assumes query_z_set is list of arrays. 
+		if isinstance(query_z_set, list):
+			z_set = np.concatenate(query_z_set)
+		else:
+			z_set = query_z_set
+		robot_z_set = z_set[:, :int(self.latent_z_dimensionality/2)]
+		env_z_set = z_set[:, int(self.latent_z_dimensionality/2):]
+
+		return z_set, robot_z_set, env_z_set
+
+	def create_kd_trees(self, query_z_set):
+
+		# Will create KD Tree from Z_J = {Z_R, Z_E}'s from Robot Dataset. 
+		self.stream_latent_z_dict = {}
+		self.stream_latent_z_dict['joint'], self.stream_latent_z_dict['robot'], self.stream_latent_z_dict['env'] = self.split_z_set(query_z_set)
+		
+		self.kdtree_dict = {}
+		self.kdtree_dict['robot'] = KDTree(self.stream_latent_z_dict['robot'])
+		self.kdtree_dict['env'] = KDTree(self.stream_latent_z_dict['env'])
+	
+	def query_kd_tree(self, stream=None, query_zs=None, number_neighbors=1):
+		
+		return self.kdtree_dict[stream].query(query_zs, number_neighbors)
+
+	def retrieve_nearest_neighbors(self, query_latent_zs):
+
+		# Assumes query_latent_zs is an array of {Z_J's = Z_R, Z_E}. 
+		human_joint_z_set, human_hand_z_set, human_env_z_set = self.split_z_set(query_latent_zs)
+
+		# Query Env KD Tree. 
+		_, nearest_env_z_indices = self.query_kd_tree(stream='env', query_zs=human_env_z_set)
+
+		# Get the Joint Zs. 
+		nearest_zs = self.stream_latent_z_dict['joint'][nearest_env_z_indices]
+
+		return nearest_zs, nearest_env_z_indices
+
+	def retrieve_start_state(self, nearest_neighbor_index=None, query_trajectory=None):
+
+		# Object Start State		
+		human_demo_object_start_state = query_trajectory[0][7:]
+
+		# Nearest Neighbor Indexes into Latent Z Set. This is a concatenation of self.latent_z_set. 
+		# Reverse Index into this. 
+		number_zs = np.zeros(len(self.latent_z_set))
+		for k, v in enumerate(self.latent_z_set):
+			number_zs[k] = v.shape[0]
+
+		# Find cumulative sum. 
+		cumulative_number_zs = np.cumsum(number_zs)
+		
+		# Find correct index - only doing this for the first nearest neighbor.. because we only need to know which Trajectory to use.. 
+		traj_index = np.searchsorted(cumulative_number_zs, nearest_neighbor_index[0], side='right')-1
+		# z_index = nearest_neighbor_index[0] - cumulative_number_zs[max(traj_index,0)]
+
+		robot_start_state = self.trajectory_set[traj_index][0][:7]
+
+		full_start_state = np.concatenate([robot_start_state, human_demo_object_start_state], axis=0)
+
+		return full_start_state
+
+	def run_H2R_zeroshot_queries(self):
+
+		#################################
+		# 1) First Load Query Zs. 
+		#################################
+		
+		print("################################")
+		print("Running Zero-Shot Querying of H2R Trajectories.")
+		self.load_query_run_zs()
+
+		#################################
+		# 2) Retrieve NNs. 
+		#################################
+
+		print("################################")
+		print("About to create KD Trees")
+		self.create_kd_trees(self.latent_z_set)
+
+		#################################
+		# 3) Rollout Trajectories. 
+		#################################
+	
+		self.retrieved_rollout_robot_trajectories = []
+		self.retrieved_nearest_neighbour_zs = []
+
+		print("################################")
+		print("################################")
+		print("Retrieving NN Latent Zs and Rolled Out Trajectories.")
+		# For the number of query trajectories. 
+		for k in range(len(self.query_trajectory_set)):
+			
+			print("##############")
+			print("Rolling out trajectory: ", k)
+			# For each trajectory, query the model for the nearest set of env zs, then retrieve corresponding robot zs. 
+			nearest_zs, nearest_neighbor_index = self.retrieve_nearest_neighbors(self.query_latent_z_set[k])
+
+			# Retrieving start state as start state of 1st nearest neighbor trajectory. 
+			# Logic is that the nearest neighbor z starts from Z_i, whose start state should be \tau_i^{t=0}. 
+			concatenated_start_state = self.retrieve_start_state(nearest_neighbor_index=nearest_neighbor_index, query_trajectory=self.query_trajectory_set[k])
+
+			# Actually rollout trajectory. 
+			rolled_out_robot_traj, _ = self.partitioned_rollout_robot_trajectory(trajectory_start=concatenated_start_state, latent_z=nearest_zs, segment_indices=self.query_segmentation_set[k])
+
+			# Unnormalize full trajectory. 
+			unnormalized_trajectory = self.unnormalize_trajectory(rolled_out_robot_traj)
+
+			self.retrieved_rollout_robot_trajectories.append(unnormalized_trajectory)
+			self.retrieved_nearest_neighbour_zs.append(nearest_zs)
+
+		self.save_trajectories()
+		self.save_individual_trajectories()
+
+	def save_trajectories(self):
+	
+		base_dir = os.path.join(self.args.logdir, self.args.name)
+		if not(os.path.isdir(base_dir)):
+			os.mkdir(base_dir)
+
+		save_dir = os.path.join(base_dir, "SavedRolloutTrajectories")
+		if not(os.path.isdir(save_dir)):
+			os.mkdir(save_dir)
+
+		np.save(os.path.join(save_dir, "Z_Set.npy"), self.retrieved_nearest_neighbour_zs)	
+		np.save(os.path.join(save_dir, "Trajectory_Set.npy"), self.retrieved_rollout_robot_trajectories)	
+
+	def save_individual_trajectories(self):
+
+		base_dir = os.path.join(self.args.logdir, self.args.name)
+		if not(os.path.isdir(base_dir)):
+			os.mkdir(base_dir)
+
+		save_dir = os.path.join(base_dir, "SavedIndividualRolloutTrajectories")
+		if not(os.path.isdir(save_dir)):
+			os.mkdir(save_dir)
+
+		for k, v in enumerate(self.retrieved_rollout_robot_trajectories):
+			# np.save(os.path.join(save_dir, "Z_{0}.npy".format(k)), self.retrieved_nearest_neighbour_zs[k])	
+			np.save(os.path.join(save_dir, "Trajectory_{0}.npy".format(k)), self.retrieved_rollout_robot_trajectories[k])
+
+		z_save_dir = os.path.join(base_dir, "SavedIndividualRolloutZs")
+		if not(os.path.isdir(z_save_dir)):
+			os.mkdir(z_save_dir)
+
+		for k, v in enumerate(self.retrieved_rollout_robot_trajectories):
+			np.save(os.path.join(z_save_dir, "Z_{0}.npy".format(k)), self.retrieved_nearest_neighbour_zs[k])	
+			# np.save(os.path.join(z_save_dir, "Trajectory_{0}.npy".format(k)), self.retrieved_rollout_robot_trajectories[k])
 
 class PolicyManager_BaselineRL(PolicyManager_BaseClass):
 
