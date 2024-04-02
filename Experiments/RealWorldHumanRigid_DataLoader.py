@@ -125,11 +125,11 @@ class RealWorldHumanRigid_PreDataset(Dataset):
 		else:
 			self.dataset_directory = self.args.datadir			
 		
-		# Require a task list. 
-		# The task name is needed for setting the environment, rendering. 
-		self.task_list = ['Pouring', 'BoxOpening', 'DrawerOpening', 'PickPlace', 'Stirring']		
-		self.environment_names = ['Pouring', 'BoxOpening', 'DrawerOpening', 'PickPlace', 'Stirring']
-		self.num_demos = np.array([5, 6, 6, 10, 10])
+		self.task_list = ['Pouring', 'BoxOpening', 'DrawerOpening', 'Pouring+Stirring', 'DrawerOpening+PickPlace', 'BoxOpening+Pouring', 'PickPlace', 'Stirring']		
+		self.environment_names = ['Pouring', 'BoxOpening', 'DrawerOpening', 'Pouring+Stirring', 'DrawerOpening+PickPlace', 'BoxOpening+Pouring', 'PickPlace', 'Stirring']
+		# self.environment_names = [ 'Pouring', 'BoxOpening', 'DrawerOpening', 'PickPlace', 'Stirring']
+		# self.num_demos = np.array([5, 6, 6, 10, 10])
+		self.num_demos = np.array([5, 6, 6, 6, 6, 6, 10, 10])		
 
 		# Each task has different number of demos according to our Human Dataset.
 		self.number_tasks = len(self.task_list)
@@ -139,7 +139,9 @@ class RealWorldHumanRigid_PreDataset(Dataset):
 		self.total_length = self.num_demos.sum()		
 
 		# self.ds_freq = 1*np.ones(self.number_tasks).astype(int)
-		self.ds_freq = np.array([6, 6, 7, 8, 8])
+		# self.ds_freq = np.array([6, 6, 7, 8, 8])
+		# self.ds_freq = np.array([6, 6, 7, 7, 7, 8, 8, 8])
+		self.ds_freq = np.array([4, 5, 6.5, 4, 6, 6, 5.5, 4])
 
 		# Set files. 
 		self.set_ground_tag_pose_dict()
@@ -610,7 +612,7 @@ class RealWorldHumanRigid_PreDataset(Dataset):
 		number_timepoints = int(demonstration['demo'].shape[0] // ds_freq)
 
 		# for k in demonstration.keys():
-		key_list = ['hand-state', 'all-object-state', 'demo']
+		key_list = ['hand-state', 'all-object-state', 'demo', 'images', 'object-state']
 		#if self.args.images_in_real_world_dataset:
 		# key_list.append('images')
 		for k in key_list:
@@ -1012,11 +1014,38 @@ class RealWorldHumanRigid_PreDataset(Dataset):
 
 		return {}	
 
-class RealWorldHumanRigid_Dataset(RealWorldHumanRigid_PreDataset):
-	
+# class RealWorldHumanRigid_Dataset(RealWorldHumanRigid_PreDataset):
+class RealWorldHumanRigid_Dataset(Dataset):	
+
 	def __init__(self, args):
 		
-		super(RealWorldHumanRigid_Dataset, self).__init__(args)	
+		# super(RealWorldHumanRigid_Dataset, self).__init__(args)	
+
+		self.args = args
+
+		if self.args.data in ['RealWorldRigidHumanNNTransferFull']:
+			self.task_list = ['Pouring', 'BoxOpening', 'DrawerOpening', 'Pouring+Stirring', 'DrawerOpening+PickPlace', 'BoxOpening+Pouring', 'PickPlace', 'Stirring']		
+			self.environment_names = ['Pouring', 'BoxOpening', 'DrawerOpening', 'Pouring+Stirring', 'DrawerOpening+PickPlace', 'BoxOpening+Pouring', 'PickPlace', 'Stirring']
+			self.num_demos = np.array([5, 6, 6, 6, 6, 6, 10, 10])
+		elif self.args.data in ['RealWorldRigidHumanNNTransferCompositional']:
+			self.task_list = ['Pouring+Stirring', 'DrawerOpening+PickPlace', 'BoxOpening+Pouring']
+			self.environment_names = ['Pouring+Stirring', 'DrawerOpening+PickPlace', 'BoxOpening+Pouring']
+			self.num_demos = np.array([6, 6, 6])
+		else:		
+			self.task_list = ['Pouring', 'BoxOpening', 'DrawerOpening', 'PickPlace', 'Stirring']
+			self.environment_names = [ 'Pouring', 'BoxOpening', 'DrawerOpening', 'PickPlace', 'Stirring']
+			self.num_demos = np.array([5, 6, 6, 10, 10])
+
+		self.individual_task_list = ['Pouring', 'BoxOpening', 'DrawerOpening', 'PickPlace', 'Stirring']
+		# Each task has different number of demos according to our Human Dataset.
+		self.number_tasks = len(self.task_list)
+		self.cummulative_num_demos = self.num_demos.cumsum()
+		# [0, 10, 20, 26, 36, 46]
+		self.cummulative_num_demos = np.insert(self.cummulative_num_demos,0,0)		
+		self.total_length = self.num_demos.sum()		
+		self.stat_dir_name = 'RealWorldHumanRigid'
+		self.dataset_directory = self.args.datadir
+		self.setup()
 
 		# Now that we've run setup, compute dataset_trajectory_lengths for smart batching.
 		self.dataset_trajectory_lengths = np.zeros(self.total_length)
@@ -1031,6 +1060,7 @@ class RealWorldHumanRigid_Dataset(RealWorldHumanRigid_PreDataset):
 
 			self.dataset_trajectory_lengths[index] = len(data_element['demo'])
 
+		# self.ds_freq = 1./np.array([1.5 , 1.2 , 1.0, 1.75, 1.2, 1.3, 1.4, 2.])
 		# Now implementing the dataset trajectory length limits. 
 		######################################################
 		# Now implementing dataset_trajectory_length_limits. 
@@ -1094,8 +1124,100 @@ class RealWorldHumanRigid_Dataset(RealWorldHumanRigid_PreDataset):
 		for i in range(len(self.task_list)):
 			# "New_Task_Demo_Array{}_HDImages.npy"
 			# self.files.append(np.load("{0}/{1}/New_Task_Demo_Array_HDImages.npy".format(self.dataset_directory, self.task_list[i]), allow_pickle=True))
-			self.files.append(np.load("{0}/{1}/New_Task_Demo_Array_HDImages_NoTagFusion.npy".format(self.dataset_directory, self.task_list[i]), allow_pickle=True))
+			# self.files.append(np.load("{0}/{1}/New_Task_Demo_Array_HDImages_NoTagFusion.npy".format(self.dataset_directory, self.task_list[i]), allow_pickle=True))
+			# self.files.append(np.load("{0}/{1}/New_Task_Demo_Array_HDImages_NewFreq_RenableTagFusion.npy".format(self.dataset_directory, self.task_list[i]), allow_pickle=True))			
+			self.files.append(np.load("{0}/{1}/New_Task_Demo_Array_HDImages_ReorderedObjects.npy".format(self.dataset_directory, self.task_list[i]), allow_pickle=True))
+		
+		self.define_compositional_task_split_indices()
+		self.define_compositional_task_object_indices()
+		self.define_compositional_task_IDs()
 
+	def define_compositional_task_split_indices(self):
+
+		# self.compositional_task_list = ['Pouring+Stirring', 'DrawerOpening+PickPlace', 'BoxOpening+Pouring']
+		self.compositional_task_split_indices = {}
+		self.compositional_task_split_indices['Pouring+Stirring'] = np.zeros(6)
+		self.compositional_task_split_indices['DrawerOpening+PickPlace'] = np.zeros(6)
+		self.compositional_task_split_indices['BoxOpening+Pouring'] = np.zeros(6)
+	
+		self.compositional_task_split_indices['Pouring+Stirring'][0] = 105
+		self.compositional_task_split_indices['Pouring+Stirring'][1] = 90
+		self.compositional_task_split_indices['Pouring+Stirring'][2] = 90
+		self.compositional_task_split_indices['Pouring+Stirring'][3] = 50
+		self.compositional_task_split_indices['Pouring+Stirring'][4] = 115
+		self.compositional_task_split_indices['Pouring+Stirring'][5] = 125
+
+		self.compositional_task_split_indices['DrawerOpening+PickPlace'][0] = 65
+		self.compositional_task_split_indices['DrawerOpening+PickPlace'][1] = 55
+		self.compositional_task_split_indices['DrawerOpening+PickPlace'][2] = 75
+		self.compositional_task_split_indices['DrawerOpening+PickPlace'][3] = 85
+		self.compositional_task_split_indices['DrawerOpening+PickPlace'][4] = 55
+		self.compositional_task_split_indices['DrawerOpening+PickPlace'][5] = 60
+
+		self.compositional_task_split_indices['BoxOpening+Pouring'][0] = 80
+		self.compositional_task_split_indices['BoxOpening+Pouring'][1] = 60
+		self.compositional_task_split_indices['BoxOpening+Pouring'][2] = 60
+		self.compositional_task_split_indices['BoxOpening+Pouring'][3] = 50
+		self.compositional_task_split_indices['BoxOpening+Pouring'][4] = 50
+		self.compositional_task_split_indices['BoxOpening+Pouring'][5] = 55
+
+	def get_split_index_for_demonstration(self, task, demo_index):
+
+		if task in self.compositional_task_split_indices.keys():			
+			return self.compositional_task_split_indices[task][demo_index]
+		else: 
+			return None
+
+	def define_compositional_task_IDs(self):
+
+		self.compositional_task_sets = {}		
+		self.compositional_task_sets['Pouring+Stirring'] = ['Pouring', 'Stirring']
+		self.compositional_task_sets['DrawerOpening+PickPlace'] =  ['DrawerOpening', 'PickPlace']
+		self.compositional_task_sets['BoxOpening+Pouring'] = ['BoxOpening', 'Pouring']
+
+	def define_compositional_task_object_indices(self):
+
+		self.compositional_task_object_indices = {}
+		self.compositional_task_object_indices['Pouring+Stirring'] = [np.concatenate([np.arange(0,7), np.arange(14,21)]), \
+																	np.arange(7,21)]			
+		self.compositional_task_object_indices['DrawerOpening+PickPlace'] =  [np.arange(0,14), \
+																	np.concatenate([np.arange(14,21), np.arange(7,14)])]
+		self.compositional_task_object_indices['BoxOpening+Pouring'] = [np.arange(7,21), \
+																  	np.concatenate([np.arange(0,7), np.arange(14,21)])]
+
+	# def get_object_indices_for_demosntration(self, task, demo_index):
+
+	# 	return self.compositional_task_object_indices[task][]
+
+	def reconstruct_object_state(self, data_element, demo_index, task_index):
+
+		# First backup demonstration. 	
+		data_element['old_demo'] = copy.deepcopy(data_element['demo'])
+		# Now create dummy hand state. 
+		data_element['dummy_hand_state'] = np.concatenate([data_element['hand-state'][...,:3], data_element['hand-state'][...,-4:]], axis=-1)
+
+		# Now depending on the data, create appropriate artificial object state. 
+		if self.args.data in ['RealWorldRigidHumanNNTransfer']:				
+			data_element['dummy_object_state'] = data_element['object-state'][...,:14]
+		elif self.args.data in ['RealWorldRigidHumanNNTransferCompositional']:
+
+			# Get the temporal index that we switch which objects we use at. 
+			split_index = int(self.get_split_index_for_demonstration(self.task_list[task_index], demo_index=demo_index))
+
+			# Get object dimension indices to use. 
+			pre_split_indices = self.compositional_task_object_indices[self.task_list[task_index]][0]
+			post_split_indices = self.compositional_task_object_indices[self.task_list[task_index]][1]
+
+			# First copy the entire pre-split indexed objects into the dummy object state object, then fill in post split indices. 
+			data_element['dummy_object_state'] = np.zeros((data_element['demo'].shape[0], 14))
+			data_element['dummy_object_state'][:split_index] = data_element['object-state'][:split_index,pre_split_indices]
+			data_element['dummy_object_state'][split_index:] = data_element['object-state'][split_index:,post_split_indices]
+		
+		# Now reconstruct demo. 
+		data_element['demo'] = np.concatenate([data_element['dummy_hand_state'], data_element['dummy_object_state']], axis=-1)
+
+		return data_element
+	
 	def __getitem__(self, index):
 
 		if index>=self.total_length:
@@ -1107,33 +1229,31 @@ class RealWorldHumanRigid_Dataset(RealWorldHumanRigid_PreDataset):
 		
 		# Decide task ID, and new index modulo num_demos.
 		# Subtract number of demonstrations in cumsum until then, and then 				
-		new_index = index-self.cummulative_num_demos[max(task_index,0)]		
+		new_index = index-self.cummulative_num_demos[max(task_index,0)]
 		data_element = self.files[task_index][new_index]
-
-		resample_length = len(data_element['demo'])//self.args.ds_freq
-		# print("Orig:", len(data_element['demo']),"New length:",resample_length)
 
 		self.kernel_bandwidth = self.args.smoothing_kernel_bandwidth
 		
 		# Trivially adding task ID to data element.
-		data_element['task-id'] = task_index
+		data_element['task-id'] = task_index		
 		data_element['environment-name'] = self.environment_names[task_index]
+		
 
-		if resample_length<=1 or data_element['hand-state'].shape[0]<=1:
+		if data_element['hand-state'].shape[0]<=1:
 			data_element['is_valid'] = False			
 		else:
 			data_element['is_valid'] = True
 
-			###############################
-			# If we have additional downsampling, do it here. 
-			if self.args.ds_freq>1.:				
-				self.downsample_data(data_element, data_element['task-id'], self.args.ds_freq)
-				# data_element = 
-			
 			# Copy over to different key. 
 			data_element['object-state'] = data_element['all-object-state']
 
-			if self.args.smoothen:
+			###############################
+			# If we have additional downsampling, do it here. 
+			# if self.args.ds_freq>1.:					
+			# self.downsample_data(data_element, data_element['task-id'])
+			# self.upsample_data(data_element, data_element['task-id'])
+					
+			if self.args.smoothen:				
 				data_element['demo'] = gaussian_filter1d(data_element['demo'],self.kernel_bandwidth,axis=0,mode='nearest')
 				data_element['hand-state'] = gaussian_filter1d(data_element['hand-state'],self.kernel_bandwidth,axis=0,mode='nearest')
 				data_element['object-state'] = gaussian_filter1d(data_element['object-state'],self.kernel_bandwidth,axis=0,mode='nearest')
@@ -1143,14 +1263,11 @@ class RealWorldHumanRigid_Dataset(RealWorldHumanRigid_PreDataset):
 				data_element['demo'] = data_element['hand-state']
 			# data_element['environment-name'] = self.environment_names[task_index]
 				
-			if self.args.data in ['RealWorldRigidHumanNNTransfer']:
-				data_element['old_demo'] = copy.deepcopy(data_element['demo'])
-
-				#######################
-				# First construct dummy hand state.				
-				data_element['dummy_hand_state'] = np.concatenate([data_element['hand-state'][...,:3], data_element['hand-state'][...,-4:]], axis=-1)
-				data_element['dummy_object_state'] = data_element['object-state'][...,:-14]
-				data_element['demo'] = np.concatenate([data_element['dummy_hand_state'], data_element['dummy_object_state']], axis=-1)
+			if self.args.data in ['RealWorldRigidHumanNNTransfer', 'RealWorldRigidHumanNNTransferFull',
+						 'RealWorldRigidHumanNNTransferCompositional']:
+				
+				data_element['task_split_index'] = self.get_split_index_for_demonstration(self.task_list[data_element['task-id']], new_index)
+				data_element = self.reconstruct_object_state(data_element, demo_index=new_index, task_index=task_index)
 
 		return data_element
 	
@@ -1158,6 +1275,9 @@ class RealWorldHumanRigid_Dataset(RealWorldHumanRigid_PreDataset):
 	#### Needs to be edited --- self.state_size
 	###################################
 	
+	def __len__(self):
+		return self.total_length
+
 	def compute_statistics(self, prefix='RealWorldHumanRigid'):
 
 		if prefix=='RealWorldHumanRigid':

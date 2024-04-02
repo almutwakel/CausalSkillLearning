@@ -2465,18 +2465,34 @@ class ContinuousEncoderNetwork(PolicyNetwork_BaseClass):
 		else:
 			lstm_input_size = input_size
 		
-		lstm = torch.nn.LSTM(input_size=lstm_input_size, hidden_size=self.hidden_size, num_layers=self.num_layers, bidirectional=True, dropout=self.args.dropout).to(device)
+		if self.args.transformer is not None:
 
-		# Define output layers for the LSTM, and activations for this output layer. 
-		mean_output_layer = torch.nn.Linear(2*self.hidden_size, output_size).to(device)
-		variances_output_layer = torch.nn.Linear(2*self.hidden_size, output_size).to(device)		
+			# with torch.backends.cuda.sdp_kernel(enable_flash=False, enable_math=False, enable_mem_efficient=False):
+			if self.args.transformer=='encoder':			
+				self.transformer_encoder_layer = torch.nn.TransformerEncoderLayer(d_model=output_size, nhead=self.args.transformer_n_heads, dropout=self.args.dropout, dim_feedforward=self.hidden_size).to(device)
+				self.transformer_encoder = torch.nn.TransformerEncoder(encoder_layer=self.transformer_encoder_layer, num_layers=6).to(device)
+				sequence_model = self.transformer_encoder
+			elif self.args.transformer=='full':
+				self.transformer = torch.nn.Transformer(d_model=output_size, nhead=self.args.transformer_n_heads, dropout=self.args.dropout, dim_feedforward=self.hidden_size).to(device)
+				sequence_model = self.transformer
 
-		return lstm, mean_output_layer, variances_output_layer, state_representation_layer
+			# Define output layers for the LSTM, and activations for this output layer. 
+			mean_output_layer = torch.nn.Linear(output_size, output_size).to(device)
+			variances_output_layer = torch.nn.Linear(output_size, output_size).to(device)		
+
+		else:
+			sequence_model = torch.nn.LSTM(input_size=lstm_input_size, hidden_size=self.hidden_size, num_layers=self.num_layers, bidirectional=True, dropout=self.args.dropout).to(device)
+
+			# Define output layers for the LSTM, and activations for this output layer. 
+			mean_output_layer = torch.nn.Linear(2*self.hidden_size, output_size).to(device)
+			variances_output_layer = torch.nn.Linear(2*self.hidden_size, output_size).to(device)		
+
+		return sequence_model, mean_output_layer, variances_output_layer, state_representation_layer
 
 	def instantiate_networks(self):
 
-		self.network_dict = torch.nn.ModuleDict()
-		self.network_dict['lstm'], self.network_dict['mean_output_layer'], self.network_dict['variances_output_layer'], self.network_dict['state_representation_layer'] = self.define_networks(self.size_dict['input_size'], self.size_dict['output_size']) 
+		self.network_dict = torch.nn.ModuleDict()		
+		self.network_dict['sequence_model'], self.network_dict['mean_output_layer'], self.network_dict['variances_output_layer'], self.network_dict['state_representation_layer'] = self.define_networks(self.size_dict['input_size'], self.size_dict['output_size']) 
 
 		if self.args.positional_encoding:
 			if self.args.state_representation_layer: 
@@ -2523,14 +2539,31 @@ class ContinuousEncoderNetwork(PolicyNetwork_BaseClass):
 		##############################
 		# Forward pass through LSTM. 
 		##############################
-				
-		outputs, hidden = network_dict['lstm'](posembed_input)
-		concatenated_outputs = torch.cat([outputs[0,:,self.hidden_size:],outputs[-1,:,:self.hidden_size]],dim=-1).view((1,batch_size,-1))
+			
+		# print("Temporarily disabling CUDNN for LSTM, for double backward")		
+		# with torch.backends.cudnn.flags(enabled=False):    
+		# 	outputs, hidden = network_dict['sequence_model'](posembed_input)
+
+		if self.args.transformer=='full':
+									
+			dummy_target = torch.zeros(1, batch_size, posembed_input.shape[-1]).to(device)		
+			outputs = network_dict['sequence_model'](posembed_input, dummy_target)
+
+			# Here, copy. 
+			concatenated_outputs = outputs		
+
+		elif self.args.transformer=='encoder':
+	
+			outputs = network_dict['sequence_model'](posembed_input)
+			# For the transformer encoder, just take last value. 
+			concatenated_outputs = outputs[-1].view(1, batch_size, -1)
+		else:			
+			outputs, hidden = network_dict['sequence_model'](posembed_input)
+			concatenated_outputs = torch.cat([outputs[0,:,self.hidden_size:],outputs[-1,:,:self.hidden_size]],dim=-1).view((1,batch_size,-1))
 
 		##############################
 		# Predict Gaussian means and variances. 
 		##############################
-
 		mean_outputs = network_dict['mean_output_layer'](concatenated_outputs)
 
 		# if self.args.constant_variance:
@@ -2627,12 +2660,12 @@ class ContinuousFactoredEncoderNetwork(ContinuousEncoderNetwork):
 
 		# Define networks for robot stream.
 		self.robot_network_dict = torch.nn.ModuleDict()
-		self.robot_network_dict['lstm'], self.robot_network_dict['mean_output_layer'], self.robot_network_dict['variances_output_layer'], self.robot_network_dict['state_representation_layer'] = self.define_networks(self.robot_size_dict['input_size'], self.robot_size_dict['output_size'])
+		self.robot_network_dict['sequence_model'], self.robot_network_dict['mean_output_layer'], self.robot_network_dict['variances_output_layer'], self.robot_network_dict['state_representation_layer'] = self.define_networks(self.robot_size_dict['input_size'], self.robot_size_dict['output_size'])
 		self.robot_network_dict['positional_encoding_layer'] = PositionalEncoding(robot_pos_emb_input_size)
 		
 		# Define networks for environment stream.
 		self.env_network_dict = torch.nn.ModuleDict()
-		self.env_network_dict['lstm'], self.env_network_dict['mean_output_layer'], self.env_network_dict['variances_output_layer'], self.env_network_dict['state_representation_layer'] = self.define_networks(self.env_size_dict['input_size'], self.env_size_dict['output_size'])
+		self.env_network_dict['sequence_model'], self.env_network_dict['mean_output_layer'], self.env_network_dict['variances_output_layer'], self.env_network_dict['state_representation_layer'] = self.define_networks(self.env_size_dict['input_size'], self.env_size_dict['output_size'])
 		self.env_network_dict['positional_encoding_layer'] = PositionalEncoding(env_pos_emb_input_size)		
 
 	def split_stream_inputs(self, input):
@@ -2742,8 +2775,9 @@ class ContinuousSequentialFactoredEncoderNetwork(ContinuousFactoredEncoderNetwor
 		# Using its own init function.
 		super(ContinuousSequentialFactoredEncoderNetwork, self).__init__(input_size, hidden_size, output_size, args)
 
-	def run_super_forward(self, input, epsilon=0.00001, network_dict={}, size_dict={}, z_sample_to_evaluate=None, greedy=False):
-		return super().forward(input, epsilon, network_dict, size_dict, z_sample_to_evaluate, greedy)
+	def run_super_forward(self, input, epsilon=0.00001, network_dict={}, size_dict={}, z_sample_to_evaluate=None, greedy=False, positional_encoding_offsets=None):
+	
+		return super().forward(input, epsilon, network_dict, size_dict, z_sample_to_evaluate, greedy, positional_encoding_offsets)
 
 	def make_dummy_latents(self, latent_z, traj_len):
 
@@ -2774,9 +2808,13 @@ class ContinuousSequentialFactoredEncoderNetwork(ContinuousFactoredEncoderNetwor
 		concatenated_zs = torch.cat(dummy_z_list, dim=0)
 
 		# Should this be -1 or should we reshape and do 0?
-		concatenated_bs = torch.cat(dummy_b_list, dim=-1)			
+		concatenated_bs = torch.cat(dummy_b_list, dim=-1)
 
-		return concatenated_zs, concatenated_bs
+		# Transpose this. 
+		transposed_bs = torch.transpose(concatenated_bs, 0, 1)
+
+		# return concatenated_zs, concatenated_bs
+		return concatenated_zs, transposed_bs
 			
 	def forward(self, input, epsilon=0.00001, network_dict={}, size_dict={}, z_sample_to_evaluate=None):
 
@@ -2815,10 +2853,14 @@ class ContinuousSequentialFactoredEncoderNetwork(ContinuousFactoredEncoderNetwor
 		################################
 		# 2) Individually encode each segment. 
 		################################
-
+		
 		z_list = []
-		for k, trajectory_segment in enumerate(state_action_trajectory_segments):
-			segment_latent_z, _, _, _  = self.run_super_forward(trajectory_segment, epsilon, greedy=True)
+		for k, trajectory_segment in enumerate(state_action_trajectory_segments):				
+			
+			# Need to add in positonal encoding offests!			
+			positional_offsets = segment_indices[k]*np.ones((self.args.batch_size),dtype=int)
+
+			segment_latent_z, _, _, _  = self.run_super_forward(trajectory_segment, epsilon, greedy=True, positional_encoding_offsets=positional_offsets)
 			z_list.append(segment_latent_z)
 		
 		################################
