@@ -119,17 +119,19 @@ if __name__ == '__main__':
 				actor_critic=ActorCritic,
 				ac_kwargs=dict(hidden_sizes=(64,)),
 				steps_per_epoch=1000, epochs=args.epochs, logger_kwargs=dict(output_dir=logdir))
-
 		# Get scores from last five epochs to evaluate success.
+		print("Training complete. Reading scores.")
 		data = pd.read_table(os.path.join(logdir,'progress.txt'))
 		last_scores = data['AverageEpRet'][-5:]
 
 		# Now evaluate last model over 100 episodes. 
 		# Load model while evaluating. 
+		print("Load policy and env")
 		_ , policy = load_policy_and_env(logdir)
 		# print("Embedding before eval")
 		# embed()
 		# Now run the policy.
+		print("Running policy.")
 		if args.hierarchical:
 			# Now run the policy.
 			hierarchical_run_policy(gym_env, policy, render=False, args=args)
